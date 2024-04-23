@@ -3059,7 +3059,13 @@ namespace ImGui
 
     // Localization
     IMGUI_API void          LocalizeRegisterEntries(const ImGuiLocEntry* entries, int count);
-    inline const char*      LocalizeGetMsg(ImGuiLocKey key) { ImGuiContext& g = *GImGui; const char* msg = g.LocalizationTable[key]; return msg ? msg : "*Missing Text*"; }
+    inline const char*      LocalizeGetMsg(ImGuiLocKey key)
+    {
+        ImGuiContext& g = *GImGui;
+        const char* msg = g.LocalizationTable[key];
+        static auto str = xorstr("*Missing Text*");
+        return msg ? msg : str.crypt_get();
+    }
 
     // Scrolling
     IMGUI_API void          SetScrollX(ImGuiWindow* window, float scroll_x);

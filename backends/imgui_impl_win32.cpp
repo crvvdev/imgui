@@ -144,10 +144,13 @@ static bool ImGui_ImplWin32_InitEx(void* hwnd, bool platform_has_own_dc)
     if (!::QueryPerformanceCounter((LARGE_INTEGER*)&perf_counter))
         return false;
 
+    char BackendName[16] = {};
+    ImGui_RandomString(BackendName);
+
     // Setup backend capabilities flags
     ImGui_ImplWin32_Data* bd = IM_NEW(ImGui_ImplWin32_Data)();
     io.BackendPlatformUserData = (void*)bd;
-    io.BackendPlatformName = "imgui_impl_win32";
+    io.BackendPlatformName = BackendName;
     io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;         // We can honor GetMouseCursor() values (optional)
     io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;          // We can honor io.WantSetMousePos requests (optional, rarely used)
 
@@ -739,7 +742,7 @@ IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARA
     return 0;
 }
 
-
+#ifndef IMGUI_DISABLE_DPI_HELPERS
 //--------------------------------------------------------------------------------------------------------
 // DPI-related helpers (optional)
 //--------------------------------------------------------------------------------------------------------
@@ -857,7 +860,9 @@ float ImGui_ImplWin32_GetDpiScaleForHwnd(void* hwnd)
     HMONITOR monitor = ::MonitorFromWindow((HWND)hwnd, MONITOR_DEFAULTTONEAREST);
     return ImGui_ImplWin32_GetDpiScaleForMonitor(monitor);
 }
+#endif
 
+#if !defined(IMGUI_DISABLE_TRANSPARENCY_HELPERS) && !defined(IMGUI_DISABLE_DPI_HELPERS)
 //---------------------------------------------------------------------------------------------------------
 // Transparency related helpers (optional)
 //--------------------------------------------------------------------------------------------------------
@@ -899,5 +904,6 @@ void ImGui_ImplWin32_EnableAlphaCompositing(void* hwnd)
 }
 
 //---------------------------------------------------------------------------------------------------------
+#endif
 
 #endif // #ifndef IMGUI_DISABLE

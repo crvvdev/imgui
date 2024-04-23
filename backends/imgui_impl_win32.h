@@ -34,6 +34,7 @@ IMGUI_IMPL_API void     ImGui_ImplWin32_NewFrame();
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 #endif
 
+#ifndef IMGUI_DISABLE_DPI_HELPERS
 // DPI-related helpers (optional)
 // - Use to enable DPI awareness without having to create an application manifest.
 // - Your own app may already do this via a manifest or explicit calls. This is mostly useful for our examples/ apps.
@@ -43,10 +44,13 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 IMGUI_IMPL_API void     ImGui_ImplWin32_EnableDpiAwareness();
 IMGUI_IMPL_API float    ImGui_ImplWin32_GetDpiScaleForHwnd(void* hwnd);       // HWND hwnd
 IMGUI_IMPL_API float    ImGui_ImplWin32_GetDpiScaleForMonitor(void* monitor); // HMONITOR monitor
+#endif
 
+#ifndef IMGUI_DISABLE_TRANSPARENCY_HELPERS
 // Transparency related helpers (optional) [experimental]
 // - Use to enable alpha compositing transparency with the desktop.
 // - Use together with e.g. clearing your framebuffer with zero-alpha.
 IMGUI_IMPL_API void     ImGui_ImplWin32_EnableAlphaCompositing(void* hwnd);   // HWND hwnd
+#endif
 
 #endif // #ifndef IMGUI_DISABLE
