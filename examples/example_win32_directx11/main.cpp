@@ -12,8 +12,6 @@
 #include <d3d11.h>
 #include <tchar.h>
 
-#include "..\third_party\xorstr\include\xorstr.hpp"
-
 // Data
 static ID3D11Device* g_pd3dDevice = nullptr;
 static ID3D11DeviceContext* g_pd3dDeviceContext = nullptr;
