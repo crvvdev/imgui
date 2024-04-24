@@ -81,7 +81,7 @@ struct ImGui_ImplOSX_Data
     NSTextInputContext*         InputContext;
     id                          Monitor;
 
-    ImGui_ImplOSX_Data()        { memset(this, 0, sizeof(*this)); }
+    ImGui_ImplOSX_Data()        { IMGUI_MEMSET(this, 0, sizeof(*this)); }
 };
 
 static ImGui_ImplOSX_Data*      ImGui_ImplOSX_CreateBackendData()   { return IM_NEW(ImGui_ImplOSX_Data)(); }
@@ -436,7 +436,7 @@ bool ImGui_ImplOSX_Init(NSView* view)
             return nullptr;
 
         const char* string_c = (const char*)[string UTF8String];
-        size_t string_len = strlen(string_c);
+        size_t string_len = IMGUI_STRLEN(string_c);
         static ImVector<char> s_clipboard;
         s_clipboard.resize((int)string_len + 1);
         strcpy(s_clipboard.Data, string_c);

@@ -45,7 +45,7 @@ struct ImGui_ImplSDLRenderer3_Data
 {
     SDL_Renderer*   SDLRenderer;
     SDL_Texture*    FontTexture;
-    ImGui_ImplSDLRenderer3_Data() { memset((void*)this, 0, sizeof(*this)); }
+    ImGui_ImplSDLRenderer3_Data() { IMGUI_MEMSET((void*)this, 0, sizeof(*this)); }
 };
 
 // Backend data stored in io.BackendRendererUserData to allow support for multiple Dear ImGui contexts

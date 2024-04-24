@@ -69,7 +69,7 @@ struct ImGui_ImplOpenGL2_Data
 {
     GLuint       FontTexture;
 
-    ImGui_ImplOpenGL2_Data() { memset((void*)this, 0, sizeof(*this)); }
+    ImGui_ImplOpenGL2_Data() { IMGUI_MEMSET((void*)this, 0, sizeof(*this)); }
 };
 
 // Backend data stored in io.BackendRendererUserData to allow support for multiple Dear ImGui contexts

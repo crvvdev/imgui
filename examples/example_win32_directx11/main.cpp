@@ -12,6 +12,8 @@
 #include <d3d11.h>
 #include <tchar.h>
 
+extern "C" int _fltused = 1;
+
 // Data
 static ID3D11Device* g_pd3dDevice = nullptr;
 static ID3D11DeviceContext* g_pd3dDeviceContext = nullptr;
@@ -26,9 +28,133 @@ void CreateRenderTarget();
 void CleanupRenderTarget();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-// Main code
-int main(int, char**)
+#ifdef _NO_CRT
+#pragma function(memcpy)
+void* memcpy(void* dest, const void* src, size_t count)
 {
+    char* char_dest = (char*)dest;
+    char* char_src = (char*)src;
+
+    if ((char_dest <= char_src) || (char_dest >= (char_src + count)))
+    {
+        /*  non-overlapping buffers */
+        while (count > 0)
+        {
+            *char_dest = *char_src;
+            char_dest++;
+            char_src++;
+            count--;
+        }
+    }
+    else
+    {
+        /* overlaping buffers */
+        char_dest = (char*)dest + count - 1;
+        char_src = (char*)src + count - 1;
+
+        while (count > 0)
+        {
+            *char_dest = *char_src;
+            char_dest--;
+            char_src--;
+            count--;
+        }
+    }
+
+    return dest;
+}
+
+#pragma function(memset)
+void* __cdecl memset(void* src, int val, size_t count)
+{
+    char* char_src = (char*)src;
+
+    while (count > 0) {
+        *char_src = val;
+        char_src++;
+        count--;
+    }
+    return src;
+}
+
+#pragma function(memcmp)
+int __cdecl memcmp(const void* s1, const void* s2, size_t n)
+{
+    if (n != 0) {
+        const unsigned char* p1 = reinterpret_cast<const unsigned char*>(s1);
+        const unsigned char* p2 = reinterpret_cast<const unsigned char*>(s2);
+        do {
+            if (*p1++ != *p2++)
+                return (*--p1 - *--p2);
+        } while (--n != 0);
+    }
+    return 0;
+}
+
+#pragma function(memmove)
+void* __cdecl memmove(void* dest, const void* src, size_t len)
+{
+    char* d = reinterpret_cast<char*>(dest);
+    char* s = reinterpret_cast<char*>(const_cast<void*>(src));
+
+    if (d < s)
+    {
+        while (len--)
+        {
+            *d++ = *s++;
+        }
+    }
+    else
+    {
+        char* lasts = s + (len - 1);
+        char* lastd = d + (len - 1);
+        while (len--)
+            *lastd-- = *lasts--;
+    }
+    return dest;
+}
+
+#pragma function(strlen)
+size_t __cdecl strlen(
+    char const* _Str
+)
+{
+    size_t i = 0;
+
+    while (*_Str)
+    {
+        i++;
+        _Str++;
+    }
+
+    return i;
+}
+
+void __cdecl operator delete(void* p, size_t sz) {
+    UNREFERENCED_PARAMETER(sz);
+    UNREFERENCED_PARAMETER(p);
+}
+#endif
+
+static void* __cdecl ImGuiAllocWrapper(const std::size_t nSize, [[maybe_unused]] void* pUserData = nullptr)
+{
+    return malloc(nSize);
+}
+
+static void __cdecl ImGuiFreeWrapper(void* pMemory, [[maybe_unused]] void* pUserData = nullptr) noexcept
+{
+    free(pMemory);
+}
+
+// Main code
+#ifdef _NO_CRT
+int main_noCRT(int, char**)
+#else
+int main(int, char**)
+#endif
+{
+    LoadLibraryA("user32.dll");
+
     // Create application window
     //ImGui_ImplWin32_EnableDpiAwareness();
     WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, xorstr_(L"ImGui Example"), nullptr };
@@ -43,12 +169,14 @@ int main(int, char**)
         return 1;
     }
 
+    ImGui::SetAllocatorFunctions(ImGuiAllocWrapper, ImGuiFreeWrapper, nullptr);
+
     // Show the window
     ::ShowWindow(hwnd, SW_SHOWDEFAULT);
     ::UpdateWindow(hwnd);
 
     // Setup Dear ImGui context
-    IMGUI_CHECKVERSION();
+    //IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
@@ -179,8 +307,7 @@ int main(int, char**)
 bool CreateDeviceD3D(HWND hWnd)
 {
     // Setup swap chain
-    DXGI_SWAP_CHAIN_DESC sd;
-    ZeroMemory(&sd, sizeof(sd));
+    DXGI_SWAP_CHAIN_DESC sd = {};
     sd.BufferCount = 2;
     sd.BufferDesc.Width = 0;
     sd.BufferDesc.Height = 0;

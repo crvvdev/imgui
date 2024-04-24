@@ -214,7 +214,7 @@ namespace
         RasterizationDensity = cfg.RasterizerDensity;
         InvRasterizationDensity = 1.0f / RasterizationDensity;
 
-        memset(&Info, 0, sizeof(Info));
+        IMGUI_MEMSET(&Info, 0, sizeof(Info));
         SetPixelHeight((uint32_t)cfg.SizePixels);
 
         return true;
@@ -406,7 +406,7 @@ struct ImFontBuildSrcGlyphFT
     uint32_t            Codepoint;
     unsigned int*       BitmapData;         // Point within one of the dst_tmp_bitmap_buffers[] array
 
-    ImFontBuildSrcGlyphFT() { memset((void*)this, 0, sizeof(*this)); }
+    ImFontBuildSrcGlyphFT() { IMGUI_MEMSET((void*)this, 0, sizeof(*this)); }
 };
 
 struct ImFontBuildSrcDataFT
@@ -449,8 +449,8 @@ bool ImFontAtlasBuildWithFreeTypeEx(FT_Library ft_library, ImFontAtlas* atlas, u
     ImVector<ImFontBuildDstDataFT> dst_tmp_array;
     src_tmp_array.resize(atlas->ConfigData.Size);
     dst_tmp_array.resize(atlas->Fonts.Size);
-    memset((void*)src_tmp_array.Data, 0, (size_t)src_tmp_array.size_in_bytes());
-    memset((void*)dst_tmp_array.Data, 0, (size_t)dst_tmp_array.size_in_bytes());
+    IMGUI_MEMSET((void*)src_tmp_array.Data, 0, (size_t)src_tmp_array.size_in_bytes());
+    IMGUI_MEMSET((void*)dst_tmp_array.Data, 0, (size_t)dst_tmp_array.size_in_bytes());
 
     // 1. Initialize font loading structure, check font data validity
     for (int src_i = 0; src_i < atlas->ConfigData.Size; src_i++)
@@ -546,7 +546,7 @@ bool ImFontAtlasBuildWithFreeTypeEx(FT_Library ft_library, ImFontAtlas* atlas, u
     // (We technically don't need to zero-clear buf_rects, but let's do it for the sake of sanity)
     ImVector<stbrp_rect> buf_rects;
     buf_rects.resize(total_glyphs_count);
-    memset(buf_rects.Data, 0, (size_t)buf_rects.size_in_bytes());
+    IMGUI_MEMSET(buf_rects.Data, 0, (size_t)buf_rects.size_in_bytes());
 
     // Allocate temporary rasterization data buffers.
     // We could not find a way to retrieve accurate glyph size without rendering them.
@@ -655,13 +655,13 @@ bool ImFontAtlasBuildWithFreeTypeEx(FT_Library ft_library, ImFontAtlas* atlas, u
     {
         size_t tex_size = (size_t)atlas->TexWidth * atlas->TexHeight * 4;
         atlas->TexPixelsRGBA32 = (unsigned int*)IM_ALLOC(tex_size);
-        memset(atlas->TexPixelsRGBA32, 0, tex_size);
+        IMGUI_MEMSET(atlas->TexPixelsRGBA32, 0, tex_size);
     }
     else
     {
         size_t tex_size = (size_t)atlas->TexWidth * atlas->TexHeight * 1;
         atlas->TexPixelsAlpha8 = (unsigned char*)IM_ALLOC(tex_size);
-        memset(atlas->TexPixelsAlpha8, 0, tex_size);
+        IMGUI_MEMSET(atlas->TexPixelsAlpha8, 0, tex_size);
     }
 
     // 8. Copy rasterized font characters back into the main texture
@@ -776,7 +776,7 @@ static void* FreeType_Realloc(FT_Memory /*memory*/, long cur_size, long new_size
     if (new_size > cur_size)
     {
         void* new_block = GImGuiFreeTypeAllocFunc((size_t)new_size, GImGuiFreeTypeAllocatorUserData);
-        memcpy(new_block, block, (size_t)cur_size);
+        IMGUI_MEMCPY(new_block, block, (size_t)cur_size);
         GImGuiFreeTypeFreeFunc(block, GImGuiFreeTypeAllocatorUserData);
         return new_block;
     }

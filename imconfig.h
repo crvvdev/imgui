@@ -16,6 +16,7 @@
 
 //---- Custom third-party libraries
 #include <xorstr/include/xorstr.hpp>
+#include <lazy_importer/include/lazy_importer.hpp>
 
 //---- Define assertion handler. Defaults to calling assert().
 // If your macro uses multiple statements, make sure is enclosed in a 'do { .. } while (0)' block so it can be used as a single statement.
@@ -49,11 +50,12 @@
 //#define IMGUI_DISABLE_DEFAULT_MATH_FUNCTIONS              // Don't implement ImFabs/ImSqrt/ImPow/ImFmod/ImCos/ImSin/ImAcos/ImAtan2 so you can implement them yourself.
 //#define IMGUI_DISABLE_FILE_FUNCTIONS                      // Don't implement ImFileOpen/ImFileClose/ImFileRead/ImFileWrite and ImFileHandle at all (replace them with dummies)
 //#define IMGUI_DISABLE_DEFAULT_FILE_FUNCTIONS              // Don't implement ImFileOpen/ImFileClose/ImFileRead/ImFileWrite and ImFileHandle so you can implement them yourself if you don't want to link with fopen/fclose/fread/fwrite. This will also disable the LogToTTY() function.
-//#define IMGUI_DISABLE_DEFAULT_ALLOCATORS                  // Don't implement default allocators calling malloc()/free() to avoid linking with them. You will need to call ImGui::SetAllocatorFunctions().
+#define IMGUI_DISABLE_DEFAULT_ALLOCATORS                  // Don't implement default allocators calling malloc()/free() to avoid linking with them. You will need to call ImGui::SetAllocatorFunctions().
 //#define IMGUI_DISABLE_SSE                                 // Disable use of SSE intrinsics even if available
 #define IMGUI_IMPL_WIN32_DISABLE_GAMEPAD
 #define IMGUI_DISABLE_DPI_HELPERS
 #define IMGUI_DISABLE_TRANSPARENCY_HELPERS
+#define IMGUI_DISABLE_TTY_FUNCTIONS
 
 //---- Include imgui_user.h at the end of imgui.h as a convenience
 // May be convenient for some users to only explicitly include vanilla imgui.h and have extra stuff included.
@@ -77,7 +79,7 @@
 
 //---- Use stb_sprintf.h for a faster implementation of vsnprintf instead of the one from libc (unless IMGUI_DISABLE_DEFAULT_FORMAT_FUNCTIONS is defined)
 // Compatibility checks of arguments and formats done by clang and GCC will be disabled in order to support the extra formats provided by stb_sprintf.h.
-//#define IMGUI_USE_STB_SPRINTF
+#define IMGUI_USE_STB_SPRINTF
 
 //---- Use FreeType to build and rasterize the font atlas (instead of stb_truetype which is embedded by default in Dear ImGui)
 // Requires FreeType headers to be available in the include path. Requires program to be compiled with 'misc/freetype/imgui_freetype.cpp' (in this repository) + the FreeType library (not provided).
@@ -108,6 +110,227 @@
 //---- ...Or use Dear ImGui's own very basic math operators.
 #define IMGUI_DEFINE_MATH_OPERATORS
 
+static constexpr auto IMGUI_LAZY_MSVCRT     = LI_MODULE("msvcrt.dll");
+static constexpr auto IMGUI_LAZY_USER32     = LI_MODULE("user32.dll");
+static constexpr auto IMGUI_LAZY_KERNEL32   = LI_MODULE("kernel32.dll");
+
+#define IMGUI_FOPEN         LI_FN(fopen).in_safe_cached(IMGUI_LAZY_MSVCRT.safe_cached())
+#define IMGUI_WFOPEN        LI_FN(_wfopen).in_safe_cached(IMGUI_LAZY_MSVCRT.safe_cached())
+#define IMGUI_FCLOSE        LI_FN(fclose).in_safe_cached(IMGUI_LAZY_MSVCRT.safe_cached())
+#define IMGUI_FREAD         LI_FN(fread).in_safe_cached(IMGUI_LAZY_MSVCRT.safe_cached())
+#define IMGUI_FWRITE        LI_FN(fwrite).in_safe_cached(IMGUI_LAZY_MSVCRT.safe_cached())
+#define IMGUI_FTELL         LI_FN(ftell).in_safe_cached(IMGUI_LAZY_MSVCRT.safe_cached())
+#define IMGUI_FSEEK         LI_FN(fseek).in_safe_cached(IMGUI_LAZY_MSVCRT.safe_cached())
+
+#ifdef _NO_CRT
+inline double __fabs(double x)
+{
+    return x;
+}
+
+inline float __fabsf(float x)
+{
+    return x;
+}
+
+inline double __sqrt(double x)
+{
+    return x;
+}
+
+inline float __sqrtf(float x)
+{
+    return x;
+}
+
+inline float __fmodf(float x, float y)
+{
+    return x + y;
+}
+
+inline float __cosf(float x)
+{
+    return x;
+}
+
+inline float __sinf(float x)
+{
+    return x;
+}
+
+inline float __acosf(float x)
+{
+    return x;
+}
+
+inline float __atan2f(float x, float y)
+{
+    return x + y;
+}
+
+inline float __atof(const char* x)
+{
+    return 0.f;
+}
+
+inline float __ceil(float x)
+{
+    return x;
+}
+
+inline double __pow(double x, double y)
+{
+    return x + y;
+}
+
+inline float __powf(float x, float y)
+{
+    return x + y;
+}
+
+inline double __log(double x)
+{
+    return x;
+}
+
+inline float __logf(float x)
+{
+    return x;
+}
+
+#define IMGUI_FABS(x)       __fabs(x)
+#define IMGUI_FABSF(x)      __fabsf(x)
+#define IMGUI_SQRT(x)       __sqrt(x)
+#define IMGUI_SQRTF(x)      __sqrtf(x)
+#define IMGUI_FMODF(x, y)   __fmodf(x, y)
+#define IMGUI_COSF(x)       __cosf(x)
+#define IMGUI_SINF(x)       __sinf(x)
+#define IMGUI_ACOSF(x)      __acosf(x)
+#define IMGUI_ATAN2F(y, x)  __atan2f(x, y)
+#define IMGUI_ATOF(x)       __atof(x)
+#define IMGUI_CEIL(x)       __ceil(x)
+#define IMGUI_POW(x, y)     __pow(x, y)
+#define IMGUI_POWF(x, y)    __powf(x, y)
+#define IMGUI_LOG(x)        __log(x)
+#define IMGUI_LOGF(x)       __logf(x)
+#define IMGUI_QSORT(base, count, size_of_elements, compare_fn)      ((void)0)
+
+inline void* __cdecl __memchr(const void* s, int c, size_t n)
+{
+    if (n)
+    {
+        const char* p = reinterpret_cast<const char*>(s);
+        do {
+            if (*p++ == c)
+                return (void*)(p - 1);
+        } while (--n != 0);
+    }
+    return 0;
+}
+
+inline int __CRTDECL __sscanf(
+    _In_z_                       const char* _Buffer,
+    _In_z_ _Scanf_format_string_ const char* _Format,
+    ...)
+{
+    return 0;
+}
+
+inline char* __CRTDECL __strchr(_In_z_ const char* _String, _In_ int const _Ch)
+{
+    return nullptr;
+}
+
+inline int __cdecl __strcmp(
+    _In_z_ char const* _Str1,
+    _In_z_ char const* _Str2
+)
+{
+    return 0;
+}
+
+inline char*
+__strncpy(char* dst, const char* src, size_t n)
+{
+    if (n != 0) {
+        char* d = dst;
+        const char* s = src;
+
+        do {
+            if ((*d++ = *s++) == 0) {
+                /* NUL pad the remaining n-1 bytes */
+                while (--n != 0)
+                    *d++ = 0;
+                break;
+            }
+        } while (--n != 0);
+    }
+    return (dst);
+}
+
+inline char* __strstr(const char*, const char*)
+{
+    return nullptr;
+}
+
+inline int __cdecl __strncmp(
+    _In_reads_or_z_(_MaxCount) char const* _Str1,
+    _In_reads_or_z_(_MaxCount) char const* _Str2,
+    _In_                       size_t      _MaxCount
+)
+{
+    return 0;
+}
+
+#define IMGUI_MEMCPY                    memcpy
+#define IMGUI_MEMCMP                    memcmp
+#define IMGUI_MEMSET                    memset
+#define IMGUI_MEMMOVE                   memmove
+#define IMGUI_MEMCHR                    __memchr
+#define IMGUI_ZEROMEMORY(p, s)          IMGUI_MEMSET(p, 0, s);
+
+#define IMGUI_STRCHR                    __strchr
+#define IMGUI_STRCMP                    __strcmp
+#define IMGUI_STRLEN                    strlen
+#define IMGUI_STRNCPY                   __strncpy
+#define IMGUI_STRNCMP                   __strncmp
+#define IMGUI_STRSTR                    __strstr
+#define IMGUI_SCANF                     __sscanf
+#else
+#define IMGUI_FABS(x)                   fabs(x)
+#define IMGUI_FABSF(x)                  fabsf(x)
+#define IMGUI_SQRT(x)                   sqrt(x)
+#define IMGUI_SQRTF(x)                  sqrtf(x)
+#define IMGUI_FMODF(x, y)               fmodf(x, y)
+#define IMGUI_COSF(x)                   cosf(x)
+#define IMGUI_SINF(x)                   sinf(x)
+#define IMGUI_ACOSF(x)                  acosf(x)
+#define IMGUI_ATAN2F(x, y)              atan2f(x, y)
+#define IMGUI_ATOF(x)                   atof(x)
+#define IMGUI_CEIL(x)                   ceilf(x)
+#define IMGUI_POW(x, y)                 pow(x, y)
+#define IMGUI_POWF(x, y)                powf(x, y)
+#define IMGUI_LOG(x)                    log(x)
+#define IMGUI_LOGF(x)                   logf(x)
+
+#define IMGUI_MEMCPY                    memcpy
+#define IMGUI_MEMCMP                    memcmp
+#define IMGUI_MEMSET                    memset
+#define IMGUI_MEMMOVE                   memmove
+#define IMGUI_MEMCHR                    memchr
+#define IMGUI_ZEROMEMORY(p, s)          IMGUI_MEMSET(p, 0, s);
+
+#define IMGUI_STRCHR                    strchr
+#define IMGUI_STRCMP                    strcmp
+#define IMGUI_STRLEN                    strlen
+#define IMGUI_STRNCPY                   strncpy
+#define IMGUI_STRNCMP                   strncmp
+#define IMGUI_STRSTR                    strstr
+#define IMGUI_SCANF                     sscanf
+
+#define IMGUI_QSORT(base, count, sizeOfElements, compareFn)      qsort(base, count, sizeOfElements, compareFn)
+#endif
+
 //---- Use 32-bit vertex indices (default is 16-bit) is one way to allow large meshes with more than 64K vertices.
 // Your renderer backend will need to support it (most example renderer backends support both 16/32-bit indices).
 // Another way to allow large meshes while keeping 16-bit indices is to handle ImDrawCmd::VtxOffset in your renderer.
@@ -135,3 +358,5 @@ namespace ImGui
     void MyFunction(const char* name, MyMatrix44* mtx);
 }
 */
+
+

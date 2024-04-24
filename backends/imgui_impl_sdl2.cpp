@@ -122,7 +122,7 @@ struct ImGui_ImplSDL2_Data
     ImGui_ImplSDL2_GamepadMode    GamepadMode;
     bool                          WantUpdateGamepadsList;
 
-    ImGui_ImplSDL2_Data()   { memset((void*)this, 0, sizeof(*this)); }
+    ImGui_ImplSDL2_Data()   { IMGUI_MEMSET((void*)this, 0, sizeof(*this)); }
 };
 
 // Backend data stored in io.BackendPlatformUserData to allow support for multiple Dear ImGui contexts
@@ -408,7 +408,7 @@ static bool ImGui_ImplSDL2_Init(SDL_Window* window, SDL_Renderer* renderer)
     const char* sdl_backend = SDL_GetCurrentVideoDriver();
     const char* global_mouse_whitelist[] = { "windows", "cocoa", "x11", "DIVE", "VMAN" };
     for (int n = 0; n < IM_ARRAYSIZE(global_mouse_whitelist); n++)
-        if (strncmp(sdl_backend, global_mouse_whitelist[n], strlen(global_mouse_whitelist[n])) == 0)
+        if (IMGUI_STRNCMP(sdl_backend, global_mouse_whitelist[n], IMGUI_STRLEN(global_mouse_whitelist[n])) == 0)
             mouse_can_use_global_state = true;
 #endif
 

@@ -64,7 +64,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debug_report(VkDebugReportFlagsEXT flags, 
 static bool IsExtensionAvailable(const ImVector<VkExtensionProperties>& properties, const char* extension)
 {
     for (const VkExtensionProperties& p : properties)
-        if (strcmp(p.extensionName, extension) == 0)
+        if (IMGUI_STRCMP(p.extensionName, extension) == 0)
             return true;
     return false;
 }

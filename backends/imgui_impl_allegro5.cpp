@@ -96,7 +96,7 @@ struct ImGui_ImplAllegro5_Data
     ImVector<ImDrawVertAllegro> BufVertices;
     ImVector<int>               BufIndices;
 
-    ImGui_ImplAllegro5_Data()   { memset((void*)this, 0, sizeof(*this)); }
+    ImGui_ImplAllegro5_Data()   { IMGUI_MEMSET((void*)this, 0, sizeof(*this)); }
 };
 
 // Backend data stored in io.BackendPlatformUserData to allow support for multiple Dear ImGui contexts
@@ -251,7 +251,7 @@ bool ImGui_ImplAllegro5_CreateDeviceObjects()
         al_destroy_bitmap(img);
         return false;
     }
-    memcpy(locked_img->data, pixels, sizeof(int) * width * height);
+    IMGUI_MEMCPY(locked_img->data, pixels, sizeof(int) * width * height);
     al_unlock_bitmap(img);
 
     // Convert software texture to hardware texture.

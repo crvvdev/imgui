@@ -1277,7 +1277,7 @@ void ImGuiStyle::ScaleAllSizes(float scale_factor)
 ImGuiIO::ImGuiIO()
 {
     // Most fields are initialized with zero
-    memset(this, 0, sizeof(*this));
+    IMGUI_MEMSET(this, 0, sizeof(*this));
     IM_STATIC_ASSERT(IM_ARRAYSIZE(ImGuiIO::MouseDown) == ImGuiMouseButton_COUNT && IM_ARRAYSIZE(ImGuiIO::MouseClicked) == ImGuiMouseButton_COUNT);
 
     // Settings
@@ -1419,7 +1419,7 @@ void ImGuiIO::ClearEventsQueue()
 void ImGuiIO::ClearInputKeys()
 {
 #ifndef IMGUI_DISABLE_OBSOLETE_KEYIO
-    memset(KeysDown, 0, sizeof(KeysDown));
+    IMGUI_MEMSET(KeysDown, 0, sizeof(KeysDown));
 #endif
     for (int n = 0; n < IM_ARRAYSIZE(KeysData); n++)
     {
@@ -1792,21 +1792,21 @@ void ImStrncpy(char* dst, const char* src, size_t count)
     if (count < 1)
         return;
     if (count > 1)
-        strncpy(dst, src, count - 1);
+        IMGUI_STRNCPY(dst, src, count - 1);
     dst[count - 1] = 0;
 }
 
 char* ImStrdup(const char* str)
 {
-    size_t len = strlen(str);
+    size_t len = IMGUI_STRLEN(str);
     void* buf = IM_ALLOC(len + 1);
-    return (char*)memcpy(buf, (const void*)str, len + 1);
+    return (char*)IMGUI_MEMCPY(buf, (const void*)str, len + 1);
 }
 
 char* ImStrdupcpy(char* dst, size_t* p_dst_size, const char* src)
 {
-    size_t dst_buf_size = p_dst_size ? *p_dst_size : strlen(dst) + 1;
-    size_t src_size = strlen(src) + 1;
+    size_t dst_buf_size = p_dst_size ? *p_dst_size : IMGUI_STRLEN(dst) + 1;
+    size_t src_size = IMGUI_STRLEN(src) + 1;
     if (dst_buf_size < src_size)
     {
         IM_FREE(dst);
@@ -1814,12 +1814,12 @@ char* ImStrdupcpy(char* dst, size_t* p_dst_size, const char* src)
         if (p_dst_size)
             *p_dst_size = src_size;
     }
-    return (char*)memcpy(dst, (const void*)src, src_size);
+    return (char*)IMGUI_MEMCPY(dst, (const void*)src, src_size);
 }
 
 const char* ImStrchrRange(const char* str, const char* str_end, char c)
 {
-    const char* p = (const char*)memchr(str, (int)c, str_end - str);
+    const char* p = (const char*)IMGUI_MEMCHR(str, (int)c, str_end - str);
     return p;
 }
 
@@ -1834,7 +1834,7 @@ int ImStrlenW(const ImWchar* str)
 // Find end-of-line. Return pointer will point to either first \n, either str_end.
 const char* ImStreolRange(const char* str, const char* str_end)
 {
-    const char* p = (const char*)memchr(str, '\n', str_end - str);
+    const char* p = (const char*)IMGUI_MEMCHR(str, '\n', str_end - str);
     return p ? p : str_end;
 }
 
@@ -1848,7 +1848,7 @@ const ImWchar* ImStrbolW(const ImWchar* buf_mid_line, const ImWchar* buf_begin) 
 const char* ImStristr(const char* haystack, const char* haystack_end, const char* needle, const char* needle_end)
 {
     if (!needle_end)
-        needle_end = needle + strlen(needle);
+        needle_end = needle + IMGUI_STRLEN(needle);
 
     const char un0 = (char)ImToUpper(*needle);
     while ((!haystack_end && *haystack) || (haystack_end && haystack < haystack_end))
@@ -1879,7 +1879,7 @@ void ImStrTrimBlanks(char* buf)
     while (p > p_start && (p[-1] == ' ' || p[-1] == '\t'))  // Trailing blanks
         p--;
     if (p_start != buf)                     // Copy memory if we had leading blanks
-        memmove(buf, p_start, p - p_start);
+        IMGUI_MEMMOVE(buf, p_start, p - p_start);
     buf[p - p_start] = 0;                   // Zero terminate
 }
 
@@ -1968,7 +1968,7 @@ void ImFormatStringToTempBufferV(const char** out_buf, const char** out_buf_end,
             buf = str_null.crypt_get();
 
         *out_buf = buf;
-        if (out_buf_end) { *out_buf_end = buf + strlen(buf); }
+        if (out_buf_end) { *out_buf_end = buf + IMGUI_STRLEN(buf); }
     }
     else if (fmt[0] == '%' && fmt[1] == '.' && fmt[2] == '*' && fmt[3] == 's' && fmt[4] == 0)
     {
@@ -2072,8 +2072,8 @@ ImFileHandle ImFileOpen(const char* filename, const char* mode)
 #if defined(_WIN32) && !defined(IMGUI_DISABLE_WIN32_FUNCTIONS) && !defined(__CYGWIN__) && !defined(__GNUC__)
     // We need a fopen() wrapper because MSVC/Windows fopen doesn't handle UTF-8 filenames.
     // Previously we used ImTextCountCharsFromUtf8/ImTextStrFromUtf8 here but we now need to support ImWchar16 and ImWchar32!
-    const int filename_wsize = ::MultiByteToWideChar(CP_UTF8, 0, filename, -1, NULL, 0);
-    const int mode_wsize = ::MultiByteToWideChar(CP_UTF8, 0, mode, -1, NULL, 0);
+    const int filename_wsize = LI_FN(MultiByteToWideChar).in_safe_cached(IMGUI_LAZY_KERNEL32.safe_cached())(CP_UTF8, 0, filename, -1, NULL, 0);
+    const int mode_wsize = LI_FN(MultiByteToWideChar).in_safe_cached(IMGUI_LAZY_KERNEL32.safe_cached())(CP_UTF8, 0, mode, -1, NULL, 0);
 
     // Use stack buffer if possible, otherwise heap buffer. Sizes include zero terminator.
     // We don't rely on current ImGuiContext as this is implied to be a helper function which doesn't depend on it (see #7314).
@@ -2083,19 +2083,19 @@ ImFileHandle ImFileOpen(const char* filename, const char* mode)
         local_temp_heap.resize(filename_wsize + mode_wsize);
     wchar_t* filename_wbuf = local_temp_heap.Data ? local_temp_heap.Data : local_temp_stack;
     wchar_t* mode_wbuf = filename_wbuf + filename_wsize;
-    ::MultiByteToWideChar(CP_UTF8, 0, filename, -1, filename_wbuf, filename_wsize);
-    ::MultiByteToWideChar(CP_UTF8, 0, mode, -1, mode_wbuf, mode_wsize);
-    return ::_wfopen(filename_wbuf, mode_wbuf);
+    LI_FN(MultiByteToWideChar).in_safe_cached(IMGUI_LAZY_KERNEL32.safe_cached())(CP_UTF8, 0, filename, -1, filename_wbuf, filename_wsize);
+    LI_FN(MultiByteToWideChar).in_safe_cached(IMGUI_LAZY_KERNEL32.safe_cached())(CP_UTF8, 0, mode, -1, mode_wbuf, mode_wsize);
+    return IMGUI_WFOPEN(filename_wbuf, mode_wbuf);
 #else
-    return fopen(filename, mode);
+    return IMGUI_FOPEN(filename, mode);
 #endif
 }
 
 // We should in theory be using fseeko()/ftello() with off_t and _fseeki64()/_ftelli64() with __int64, waiting for the PR that does that in a very portable pre-C++11 zero-warnings way.
-bool    ImFileClose(ImFileHandle f) { return fclose(f) == 0; }
-ImU64   ImFileGetSize(ImFileHandle f) { long off = 0, sz = 0; return ((off = ftell(f)) != -1 && !fseek(f, 0, SEEK_END) && (sz = ftell(f)) != -1 && !fseek(f, off, SEEK_SET)) ? (ImU64)sz : (ImU64)-1; }
-ImU64   ImFileRead(void* data, ImU64 sz, ImU64 count, ImFileHandle f) { return fread(data, (size_t)sz, (size_t)count, f); }
-ImU64   ImFileWrite(const void* data, ImU64 sz, ImU64 count, ImFileHandle f) { return fwrite(data, (size_t)sz, (size_t)count, f); }
+bool    ImFileClose(ImFileHandle f) { return IMGUI_FCLOSE(f) == 0; }
+ImU64   ImFileGetSize(ImFileHandle f) { long off = 0, sz = 0; return ((off = IMGUI_FTELL(f)) != -1 && !IMGUI_FSEEK(f, 0, SEEK_END) && (sz = IMGUI_FTELL(f)) != -1 && !IMGUI_FSEEK(f, off, SEEK_SET)) ? (ImU64)sz : (ImU64)-1; }
+ImU64   ImFileRead(void* data, ImU64 sz, ImU64 count, ImFileHandle f) { return IMGUI_FREAD(data, (size_t)sz, (size_t)count, f); }
+ImU64   ImFileWrite(const void* data, ImU64 sz, ImU64 count, ImFileHandle f) { return IMGUI_FWRITE(data, (size_t)sz, (size_t)count, f); }
 #endif // #ifndef IMGUI_DISABLE_DEFAULT_FILE_FUNCTIONS
 
 // Helper: Load file content into memory
@@ -2131,7 +2131,7 @@ void* ImFileLoadToMemory(const char* filename, const char* mode, size_t* out_fil
         return NULL;
     }
     if (padding_bytes > 0)
-        memset((void*)(((char*)file_data) + file_size), 0, (size_t)padding_bytes);
+        IMGUI_MEMSET((void*)(((char*)file_data) + file_size), 0, (size_t)padding_bytes);
 
     ImFileClose(f);
     if (out_file_size)
@@ -2382,7 +2382,7 @@ void ImGui::ColorConvertRGBtoHSV(float r, float g, float b, float& out_h, float&
     }
 
     const float chroma = r - (g < b ? g : b);
-    out_h = ImFabs(K + (g - b) / (6.f * chroma + 1e-20f));
+    out_h = ImFabsf(K + (g - b) / (6.f * chroma + 1e-20f));
     out_s = chroma / (r + 1e-20f);
     out_v = r;
 }
@@ -2605,7 +2605,7 @@ void ImGuiTextFilter::ImGuiTextRange::split(char separator, ImVector<ImGuiTextRa
 void ImGuiTextFilter::Build()
 {
     Filters.resize(0);
-    ImGuiTextRange input_range(InputBuf, InputBuf + strlen(InputBuf));
+    ImGuiTextRange input_range(InputBuf, InputBuf + IMGUI_STRLEN(InputBuf));
     input_range.split(',', &Filters);
 
     CountGrep = 0;
@@ -2673,7 +2673,7 @@ char ImGuiTextBuffer::EmptyString[1] = { 0 };
 
 void ImGuiTextBuffer::append(const char* str, const char* str_end)
 {
-    int len = str_end ? (int)(str_end - str) : (int)strlen(str);
+    int len = str_end ? (int)(str_end - str) : (int)IMGUI_STRLEN(str);
 
     // Add zero-terminator the first time
     const int write_off = (Buf.Size != 0) ? Buf.Size : 1;
@@ -2685,7 +2685,7 @@ void ImGuiTextBuffer::append(const char* str, const char* str_end)
     }
 
     Buf.resize(needed_sz);
-    memcpy(&Buf[write_off - 1], str, (size_t)len);
+    IMGUI_MEMCPY(&Buf[write_off - 1], str, (size_t)len);
     Buf[write_off - 1 + len] = 0;
 }
 
@@ -2732,7 +2732,7 @@ void ImGuiTextIndex::append(const char* base, int old_size, int new_size)
     if (EndOffset == 0 || base[EndOffset - 1] == '\n')
         LineOffsets.push_back(EndOffset);
     const char* base_end = base + new_size;
-    for (const char* p = base + old_size; (p = (const char*)memchr(p, '\n', base_end - p)) != 0; )
+    for (const char* p = base + old_size; (p = (const char*)IMGUI_MEMCHR(p, '\n', base_end - p)) != 0; )
         if (++p < base_end) // Don't push a trailing offset on last \n
             LineOffsets.push_back((int)(intptr_t)(p - base));
     EndOffset = ImMax(EndOffset, new_size);
@@ -2810,7 +2810,7 @@ static void ImGuiListClipper_SeekCursorForItem(ImGuiListClipper* clipper, int it
 
 ImGuiListClipper::ImGuiListClipper()
 {
-    memset(this, 0, sizeof(*this));
+    IMGUI_MEMSET(this, 0, sizeof(*this));
 }
 
 ImGuiListClipper::~ImGuiListClipper()
@@ -3189,7 +3189,7 @@ void ImGui::PopStyleVar(int count)
     }
     while (count > 0)
     {
-        // We avoid a generic memcpy(data, &backup.Backup.., GDataTypeSize[info->Type] * info->Count), the overhead in Debug is not worth it.
+        // We avoid a generic IMGUI_MEMCPY(data, &backup.Backup.., GDataTypeSize[info->Type] * info->Count), the overhead in Debug is not worth it.
         ImGuiStyleMod& backup = g.StyleVarStack.back();
         const ImGuiDataVarInfo* info = GetStyleVarInfo(backup.VarIdx);
         void* data = info->GetVarPtr(&g.Style);
@@ -3202,65 +3202,174 @@ void ImGui::PopStyleVar(int count)
 
 const char* ImGui::GetStyleColorName(ImGuiCol idx)
 {
+    // Define static variables outside the switch
+    static auto Text = xorstr("Text");
+    static auto TextDisabled = xorstr("TextDisabled");
+    static auto WindowBg = xorstr("WindowBg");
+    static auto ChildBg = xorstr("ChildBg");
+    static auto PopupBg = xorstr("PopupBg");
+    static auto Border = xorstr("Border");
+    static auto BorderShadow = xorstr("BorderShadow");
+    static auto FrameBg = xorstr("FrameBg");
+    static auto FrameBgHovered = xorstr("FrameBgHovered");
+    static auto FrameBgActive = xorstr("FrameBgActive");
+    static auto TitleBg = xorstr("TitleBg");
+    static auto TitleBgActive = xorstr("TitleBgActive");
+    static auto TitleBgCollapsed = xorstr("TitleBgCollapsed");
+    static auto MenuBarBg = xorstr("MenuBarBg");
+    static auto ScrollbarBg = xorstr("ScrollbarBg");
+    static auto ScrollbarGrab = xorstr("ScrollbarGrab");
+    static auto ScrollbarGrabHovered = xorstr("ScrollbarGrabHovered");
+    static auto ScrollbarGrabActive = xorstr("ScrollbarGrabActive");
+    static auto CheckMark = xorstr("CheckMark");
+    static auto SliderGrab = xorstr("SliderGrab");
+    static auto SliderGrabActive = xorstr("SliderGrabActive");
+    static auto Button = xorstr("Button");
+    static auto ButtonHovered = xorstr("ButtonHovered");
+    static auto ButtonActive = xorstr("ButtonActive");
+    static auto Header = xorstr("Header");
+    static auto HeaderHovered = xorstr("HeaderHovered");
+    static auto HeaderActive = xorstr("HeaderActive");
+    static auto Separator = xorstr("Separator");
+    static auto SeparatorHovered = xorstr("SeparatorHovered");
+    static auto SeparatorActive = xorstr("SeparatorActive");
+    static auto ResizeGrip = xorstr("ResizeGrip");
+    static auto ResizeGripHovered = xorstr("ResizeGripHovered");
+    static auto ResizeGripActive = xorstr("ResizeGripActive");
+    static auto Tab = xorstr("Tab");
+    static auto TabHovered = xorstr("TabHovered");
+    static auto TabActive = xorstr("TabActive");
+    static auto TabUnfocused = xorstr("TabUnfocused");
+    static auto TabUnfocusedActive = xorstr("TabUnfocusedActive");
+    static auto PlotLines = xorstr("PlotLines");
+    static auto PlotLinesHovered = xorstr("PlotLinesHovered");
+    static auto PlotHistogram = xorstr("PlotHistogram");
+    static auto PlotHistogramHovered = xorstr("PlotHistogramHovered");
+    static auto TableHeaderBg = xorstr("TableHeaderBg");
+    static auto TableBorderStrong = xorstr("TableBorderStrong");
+    static auto TableBorderLight = xorstr("TableBorderLight");
+    static auto TableRowBg = xorstr("TableRowBg");
+    static auto TableRowBgAlt = xorstr("TableRowBgAlt");
+    static auto TextSelectedBg = xorstr("TextSelectedBg");
+    static auto DragDropTarget = xorstr("DragDropTarget");
+    static auto NavHighlight = xorstr("NavHighlight");
+    static auto NavWindowingHighlight = xorstr("NavWindowingHighlight");
+    static auto NavWindowingDimBg = xorstr("NavWindowingDimBg");
+    static auto ModalWindowDimBg = xorstr("ModalWindowDimBg");
+    static auto Unknown = xorstr("Unknown");
+
     // Create switch-case from enum with regexp: ImGuiCol_{.*}, --> case ImGuiCol_\1: return "\1";
     switch (idx)
     {
-    case ImGuiCol_Text: return "Text";
-    case ImGuiCol_TextDisabled: return "TextDisabled";
-    case ImGuiCol_WindowBg: return "WindowBg";
-    case ImGuiCol_ChildBg: return "ChildBg";
-    case ImGuiCol_PopupBg: return "PopupBg";
-    case ImGuiCol_Border: return "Border";
-    case ImGuiCol_BorderShadow: return "BorderShadow";
-    case ImGuiCol_FrameBg: return "FrameBg";
-    case ImGuiCol_FrameBgHovered: return "FrameBgHovered";
-    case ImGuiCol_FrameBgActive: return "FrameBgActive";
-    case ImGuiCol_TitleBg: return "TitleBg";
-    case ImGuiCol_TitleBgActive: return "TitleBgActive";
-    case ImGuiCol_TitleBgCollapsed: return "TitleBgCollapsed";
-    case ImGuiCol_MenuBarBg: return "MenuBarBg";
-    case ImGuiCol_ScrollbarBg: return "ScrollbarBg";
-    case ImGuiCol_ScrollbarGrab: return "ScrollbarGrab";
-    case ImGuiCol_ScrollbarGrabHovered: return "ScrollbarGrabHovered";
-    case ImGuiCol_ScrollbarGrabActive: return "ScrollbarGrabActive";
-    case ImGuiCol_CheckMark: return "CheckMark";
-    case ImGuiCol_SliderGrab: return "SliderGrab";
-    case ImGuiCol_SliderGrabActive: return "SliderGrabActive";
-    case ImGuiCol_Button: return "Button";
-    case ImGuiCol_ButtonHovered: return "ButtonHovered";
-    case ImGuiCol_ButtonActive: return "ButtonActive";
-    case ImGuiCol_Header: return "Header";
-    case ImGuiCol_HeaderHovered: return "HeaderHovered";
-    case ImGuiCol_HeaderActive: return "HeaderActive";
-    case ImGuiCol_Separator: return "Separator";
-    case ImGuiCol_SeparatorHovered: return "SeparatorHovered";
-    case ImGuiCol_SeparatorActive: return "SeparatorActive";
-    case ImGuiCol_ResizeGrip: return "ResizeGrip";
-    case ImGuiCol_ResizeGripHovered: return "ResizeGripHovered";
-    case ImGuiCol_ResizeGripActive: return "ResizeGripActive";
-    case ImGuiCol_Tab: return "Tab";
-    case ImGuiCol_TabHovered: return "TabHovered";
-    case ImGuiCol_TabActive: return "TabActive";
-    case ImGuiCol_TabUnfocused: return "TabUnfocused";
-    case ImGuiCol_TabUnfocusedActive: return "TabUnfocusedActive";
-    case ImGuiCol_PlotLines: return "PlotLines";
-    case ImGuiCol_PlotLinesHovered: return "PlotLinesHovered";
-    case ImGuiCol_PlotHistogram: return "PlotHistogram";
-    case ImGuiCol_PlotHistogramHovered: return "PlotHistogramHovered";
-    case ImGuiCol_TableHeaderBg: return "TableHeaderBg";
-    case ImGuiCol_TableBorderStrong: return "TableBorderStrong";
-    case ImGuiCol_TableBorderLight: return "TableBorderLight";
-    case ImGuiCol_TableRowBg: return "TableRowBg";
-    case ImGuiCol_TableRowBgAlt: return "TableRowBgAlt";
-    case ImGuiCol_TextSelectedBg: return "TextSelectedBg";
-    case ImGuiCol_DragDropTarget: return "DragDropTarget";
-    case ImGuiCol_NavHighlight: return "NavHighlight";
-    case ImGuiCol_NavWindowingHighlight: return "NavWindowingHighlight";
-    case ImGuiCol_NavWindowingDimBg: return "NavWindowingDimBg";
-    case ImGuiCol_ModalWindowDimBg: return "ModalWindowDimBg";
+    case ImGuiCol_Text:
+        return Text.crypt_get();
+    case ImGuiCol_TextDisabled:
+        return TextDisabled.crypt_get();
+    case ImGuiCol_WindowBg:
+        return WindowBg.crypt_get();
+    case ImGuiCol_ChildBg:
+        return ChildBg.crypt_get();
+    case ImGuiCol_PopupBg:
+        return PopupBg.crypt_get();
+    case ImGuiCol_Border:
+        return Border.crypt_get();
+    case ImGuiCol_BorderShadow:
+        return BorderShadow.crypt_get();
+    case ImGuiCol_FrameBg:
+        return FrameBg.crypt_get();
+    case ImGuiCol_FrameBgHovered:
+        return FrameBgHovered.crypt_get();
+    case ImGuiCol_FrameBgActive:
+        return FrameBgActive.crypt_get();
+    case ImGuiCol_TitleBg:
+        return TitleBg.crypt_get();
+    case ImGuiCol_TitleBgActive:
+        return TitleBgActive.crypt_get();
+    case ImGuiCol_TitleBgCollapsed:
+        return TitleBgCollapsed.crypt_get();
+    case ImGuiCol_MenuBarBg:
+        return MenuBarBg.crypt_get();
+    case ImGuiCol_ScrollbarBg:
+        return ScrollbarBg.crypt_get();
+    case ImGuiCol_ScrollbarGrab:
+        return ScrollbarGrab.crypt_get();
+    case ImGuiCol_ScrollbarGrabHovered:
+        return ScrollbarGrabHovered.crypt_get();
+    case ImGuiCol_ScrollbarGrabActive:
+        return ScrollbarGrabActive.crypt_get();
+    case ImGuiCol_CheckMark:
+        return CheckMark.crypt_get();
+    case ImGuiCol_SliderGrab:
+        return SliderGrab.crypt_get();
+    case ImGuiCol_SliderGrabActive:
+        return SliderGrabActive.crypt_get();
+    case ImGuiCol_Button:
+        return Button.crypt_get();
+    case ImGuiCol_ButtonHovered:
+        return ButtonHovered.crypt_get();
+    case ImGuiCol_ButtonActive:
+        return ButtonActive.crypt_get();
+    case ImGuiCol_Header:
+        return Header.crypt_get();
+    case ImGuiCol_HeaderHovered:
+        return HeaderHovered.crypt_get();
+    case ImGuiCol_HeaderActive:
+        return HeaderActive.crypt_get();
+    case ImGuiCol_Separator:
+        return Separator.crypt_get();
+    case ImGuiCol_SeparatorHovered:
+        return SeparatorHovered.crypt_get();
+    case ImGuiCol_SeparatorActive:
+        return SeparatorActive.crypt_get();
+    case ImGuiCol_ResizeGrip:
+        return ResizeGrip.crypt_get();
+    case ImGuiCol_ResizeGripHovered:
+        return ResizeGripHovered.crypt_get();
+    case ImGuiCol_ResizeGripActive:
+        return ResizeGripActive.crypt_get();
+    case ImGuiCol_Tab:
+        return Tab.crypt_get();
+    case ImGuiCol_TabHovered:
+        return TabHovered.crypt_get();
+    case ImGuiCol_TabActive:
+        return TabActive.crypt_get();
+    case ImGuiCol_TabUnfocused:
+        return TabUnfocused.crypt_get();
+    case ImGuiCol_TabUnfocusedActive:
+        return TabUnfocusedActive.crypt_get();
+    case ImGuiCol_PlotLines:
+        return PlotLines.crypt_get();
+    case ImGuiCol_PlotLinesHovered:
+        return PlotLinesHovered.crypt_get();
+    case ImGuiCol_PlotHistogram:
+        return PlotHistogram.crypt_get();
+    case ImGuiCol_PlotHistogramHovered:
+        return PlotHistogramHovered.crypt_get();
+    case ImGuiCol_TableHeaderBg:
+        return TableHeaderBg.crypt_get();
+    case ImGuiCol_TableBorderStrong:
+        return TableBorderStrong.crypt_get();
+    case ImGuiCol_TableBorderLight:
+        return TableBorderLight.crypt_get();
+    case ImGuiCol_TableRowBg:
+        return TableRowBg.crypt_get();
+    case ImGuiCol_TableRowBgAlt:
+        return TableRowBgAlt.crypt_get();
+    case ImGuiCol_TextSelectedBg:
+        return TextSelectedBg.crypt_get();
+    case ImGuiCol_DragDropTarget:
+        return DragDropTarget.crypt_get();
+    case ImGuiCol_NavHighlight:
+        return NavHighlight.crypt_get();
+    case ImGuiCol_NavWindowingHighlight:
+        return NavWindowingHighlight.crypt_get();
+    case ImGuiCol_NavWindowingDimBg:
+        return NavWindowingDimBg.crypt_get();
+    case ImGuiCol_ModalWindowDimBg:
+        return ModalWindowDimBg.crypt_get();
     }
     IM_ASSERT(0);
-    return "Unknown";
+    return Unknown.crypt_get();
 }
 
 
@@ -3298,7 +3407,7 @@ void ImGui::RenderText(ImVec2 pos, const char* text, const char* text_end, bool 
     else
     {
         if (!text_end)
-            text_end = text + strlen(text); // FIXME-OPT
+            text_end = text + IMGUI_STRLEN(text); // FIXME-OPT
         text_display_end = text_end;
     }
 
@@ -3316,7 +3425,7 @@ void ImGui::RenderTextWrapped(ImVec2 pos, const char* text, const char* text_end
     ImGuiWindow* window = g.CurrentWindow;
 
     if (!text_end)
-        text_end = text + strlen(text); // FIXME-OPT
+        text_end = text + IMGUI_STRLEN(text); // FIXME-OPT
 
     if (text != text_end)
     {
@@ -3757,10 +3866,10 @@ void ImGui::CallContextHooks(ImGuiContext* ctx, ImGuiContextHookType hook_type)
 // ImGuiWindow is mostly a dumb struct. It merely has a constructor and a few helper methods
 ImGuiWindow::ImGuiWindow(ImGuiContext* ctx, const char* name) : DrawListInst(NULL)
 {
-    memset(this, 0, sizeof(*this));
+    IMGUI_MEMSET(this, 0, sizeof(*this));
     Ctx = ctx;
     Name = ImStrdup(name);
-    NameBufLen = (int)strlen(name) + 1;
+    NameBufLen = (int)IMGUI_STRLEN(name) + 1;
     ID = ImHashStr(name);
     IDStack.push_back(ID);
     MoveId = GetID(xorstr_("#MOVE"));
@@ -4875,7 +4984,7 @@ static void FlattenDrawDataIntoSingleLayer(ImDrawDataBuilder* builder)
         ImVector<ImDrawList*>* layer = builder->Layers[layer_n];
         if (layer->empty())
             continue;
-        memcpy(builder->Layers[0]->Data + n, layer->Data, layer->Size * sizeof(ImDrawList*));
+        IMGUI_MEMCPY(builder->Layers[0]->Data + n, layer->Data, layer->Size * sizeof(ImDrawList*));
         n += layer->Size;
         layer->resize(0);
     }
@@ -5019,7 +5128,7 @@ void ImGui::EndFrame()
 
     // Notify Platform/OS when our Input Method Editor cursor has moved (e.g. CJK inputs using Microsoft IME)
     ImGuiPlatformImeData* ime_data = &g.PlatformImeData;
-    if (g.IO.SetPlatformImeDataFn && memcmp(ime_data, &g.PlatformImeDataPrev, sizeof(ImGuiPlatformImeData)) != 0)
+    if (g.IO.SetPlatformImeDataFn && IMGUI_MEMCMP(ime_data, &g.PlatformImeDataPrev, sizeof(ImGuiPlatformImeData)) != 0)
     {
         IMGUI_DEBUG_LOG_IO("[io] Calling io.SetPlatformImeDataFn(): WantVisible: %d, InputPos (%.2f,%.2f)\n", ime_data->WantVisible, ime_data->InputPos.x, ime_data->InputPos.y);
         ImGuiViewport* viewport = GetMainViewport();
@@ -5969,7 +6078,7 @@ static int ImGui::UpdateWindowManualResize(ImGuiWindow* window, const ImVec2& si
                 g.WindowResizeBorderExpectedRect = border_rect;
                 g.WindowResizeRelativeMode = false;
             }
-            if ((window->Flags & ImGuiWindowFlags_ChildWindow) && memcmp(&g.WindowResizeBorderExpectedRect, &border_rect, sizeof(ImRect)) != 0)
+            if ((window->Flags & ImGuiWindowFlags_ChildWindow) && IMGUI_MEMCMP(&g.WindowResizeBorderExpectedRect, &border_rect, sizeof(ImRect)) != 0)
                 g.WindowResizeRelativeMode = true;
 
             const ImVec2 border_curr = (window->Pos + ImMin(def.SegmentN1, def.SegmentN2) * window->Size);
@@ -6267,7 +6376,7 @@ void ImGui::RenderWindowTitleBarContents(ImGuiWindow* window, const ImRect& titl
         pad_r += g.Style.ItemInnerSpacing.x;
     if (style.WindowTitleAlign.x > 0.0f && style.WindowTitleAlign.x < 1.0f)
     {
-        float centerness = ImSaturate(1.0f - ImFabs(style.WindowTitleAlign.x - 0.5f) * 2.0f); // 0.0f on either edges, 1.0f on center
+        float centerness = ImSaturate(1.0f - ImFabsf(style.WindowTitleAlign.x - 0.5f) * 2.0f); // 0.0f on either edges, 1.0f on center
         float pad_extend = ImMin(ImMax(pad_l, pad_r), title_bar_rect.GetWidth() - pad_l - pad_r - text_size.x);
         pad_l = ImMax(pad_l, pad_extend * centerness);
         pad_r = ImMax(pad_r, pad_extend * centerness);
@@ -6531,7 +6640,7 @@ bool ImGui::Begin(const char* name, bool* p_open, ImGuiWindowFlags flags)
         bool window_title_visible_elsewhere = false;
         if (g.NavWindowingListWindow != NULL && (window->Flags & ImGuiWindowFlags_NoNavFocus) == 0)   // Window titles visible when using CTRL+TAB
             window_title_visible_elsewhere = true;
-        if (window_title_visible_elsewhere && !window_just_created && strcmp(name, window->Name) != 0)
+        if (window_title_visible_elsewhere && !window_just_created && IMGUI_STRCMP(name, window->Name) != 0)
         {
             size_t buf_len = (size_t)window->NameBufLen;
             window->Name = ImStrdupcpy(window->Name, &buf_len, name);
@@ -7144,7 +7253,7 @@ void ImGui::BringWindowToDisplayFront(ImGuiWindow* window)
     for (int i = g.Windows.Size - 2; i >= 0; i--) // We can ignore the top-most window
         if (g.Windows[i] == window)
         {
-            memmove(&g.Windows[i], &g.Windows[i + 1], (size_t)(g.Windows.Size - i - 1) * sizeof(ImGuiWindow*));
+            IMGUI_MEMMOVE(&g.Windows[i], &g.Windows[i + 1], (size_t)(g.Windows.Size - i - 1) * sizeof(ImGuiWindow*));
             g.Windows[g.Windows.Size - 1] = window;
             break;
         }
@@ -7158,7 +7267,7 @@ void ImGui::BringWindowToDisplayBack(ImGuiWindow* window)
     for (int i = 0; i < g.Windows.Size; i++)
         if (g.Windows[i] == window)
         {
-            memmove(&g.Windows[1], &g.Windows[0], (size_t)i * sizeof(ImGuiWindow*));
+            IMGUI_MEMMOVE(&g.Windows[1], &g.Windows[0], (size_t)i * sizeof(ImGuiWindow*));
             g.Windows[0] = window;
             break;
         }
@@ -7175,13 +7284,13 @@ void ImGui::BringWindowToDisplayBehind(ImGuiWindow* window, ImGuiWindow* behind_
     if (pos_wnd < pos_beh)
     {
         size_t copy_bytes = (pos_beh - pos_wnd - 1) * sizeof(ImGuiWindow*);
-        memmove(&g.Windows.Data[pos_wnd], &g.Windows.Data[pos_wnd + 1], copy_bytes);
+        IMGUI_MEMMOVE(&g.Windows.Data[pos_wnd], &g.Windows.Data[pos_wnd + 1], copy_bytes);
         g.Windows[pos_beh - 1] = window;
     }
     else
     {
         size_t copy_bytes = (pos_wnd - pos_beh) * sizeof(ImGuiWindow*);
-        memmove(&g.Windows.Data[pos_beh + 1], &g.Windows.Data[pos_beh], copy_bytes);
+        IMGUI_MEMMOVE(&g.Windows.Data[pos_beh + 1], &g.Windows.Data[pos_beh], copy_bytes);
         g.Windows[pos_beh] = window;
     }
 }
@@ -8219,53 +8328,59 @@ ImGuiKey ImGui::GetKeyIndex(ImGuiKey key)
 }
 #endif
 
-// Those names a provided for debugging purpose and are not meant to be saved persistently not compared.
-static const char* const GKeyNames[] =
-{
-    "Tab", "LeftArrow", "RightArrow", "UpArrow", "DownArrow", "PageUp", "PageDown",
-    "Home", "End", "Insert", "Delete", "Backspace", "Space", "Enter", "Escape",
-    "LeftCtrl", "LeftShift", "LeftAlt", "LeftSuper", "RightCtrl", "RightShift", "RightAlt", "RightSuper", "Menu",
-    "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F", "G", "H",
-    "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
-    "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
-    "F13", "F14", "F15", "F16", "F17", "F18", "F19", "F20", "F21", "F22", "F23", "F24",
-    "Apostrophe", "Comma", "Minus", "Period", "Slash", "Semicolon", "Equal", "LeftBracket",
-    "Backslash", "RightBracket", "GraveAccent", "CapsLock", "ScrollLock", "NumLock", "PrintScreen",
-    "Pause", "Keypad0", "Keypad1", "Keypad2", "Keypad3", "Keypad4", "Keypad5", "Keypad6",
-    "Keypad7", "Keypad8", "Keypad9", "KeypadDecimal", "KeypadDivide", "KeypadMultiply",
-    "KeypadSubtract", "KeypadAdd", "KeypadEnter", "KeypadEqual",
-    "AppBack", "AppForward",
-    "GamepadStart", "GamepadBack",
-    "GamepadFaceLeft", "GamepadFaceRight", "GamepadFaceUp", "GamepadFaceDown",
-    "GamepadDpadLeft", "GamepadDpadRight", "GamepadDpadUp", "GamepadDpadDown",
-    "GamepadL1", "GamepadR1", "GamepadL2", "GamepadR2", "GamepadL3", "GamepadR3",
-    "GamepadLStickLeft", "GamepadLStickRight", "GamepadLStickUp", "GamepadLStickDown",
-    "GamepadRStickLeft", "GamepadRStickRight", "GamepadRStickUp", "GamepadRStickDown",
-    "MouseLeft", "MouseRight", "MouseMiddle", "MouseX1", "MouseX2", "MouseWheelX", "MouseWheelY",
-    "ModCtrl", "ModShift", "ModAlt", "ModSuper", // ReservedForModXXX are showing the ModXXX names.
-};
-IM_STATIC_ASSERT(ImGuiKey_NamedKey_COUNT == IM_ARRAYSIZE(GKeyNames));
-
 const char* ImGui::GetKeyName(ImGuiKey key)
 {
     ImGuiContext& g = *GImGui;
 #ifdef IMGUI_DISABLE_OBSOLETE_KEYIO
     IM_ASSERT((IsNamedKeyOrModKey(key) || key == ImGuiKey_None) && "Support for user key indices was dropped in favor of ImGuiKey. Please update backend and user code.");
 #else
+
+    static auto NA = xorstr("N/A");
+    static auto None = xorstr("None");
+    static auto Unknown = xorstr("Unknown");
+
     if (IsLegacyKey(key))
     {
         if (g.IO.KeyMap[key] == -1)
-            return "N/A";
+            return NA.crypt_get();
         IM_ASSERT(IsNamedKey((ImGuiKey)g.IO.KeyMap[key]));
         key = (ImGuiKey)g.IO.KeyMap[key];
     }
 #endif
     if (key == ImGuiKey_None)
-        return "None";
+        return None.crypt_get();
     if (key & ImGuiMod_Mask_)
         key = ConvertSingleModFlagToKey(&g, key);
     if (!IsNamedKey(key))
-        return "Unknown";
+        return Unknown.crypt_get();
+
+    // Those names a provided for debugging purpose and are not meant to be saved persistently not compared.
+    const char* const GKeyNames[] =
+    {
+        xorstr_("Tab"), xorstr_("LeftArrow"), xorstr_("RightArrow"), xorstr_("UpArrow"), xorstr_("DownArrow"), xorstr_("PageUp"), xorstr_("PageDown"),
+        xorstr_("Home"), xorstr_("End"), xorstr_("Insert"), xorstr_("Delete"), xorstr_("Backspace"), xorstr_("Space"), xorstr_("Enter"), xorstr_("Escape"),
+        xorstr_("LeftCtrl"), xorstr_("LeftShift"), xorstr_("LeftAlt"), xorstr_("LeftSuper"), xorstr_("RightCtrl"), xorstr_("RightShift"), xorstr_("RightAlt"), xorstr_("RightSuper"), xorstr_("Menu"),
+        xorstr_("0"), xorstr_("1"), xorstr_("2"), xorstr_("3"), xorstr_("4"), xorstr_("5"), xorstr_("6"), xorstr_("7"), xorstr_("8"), xorstr_("9"), xorstr_("A"), xorstr_("B"), xorstr_("C"), xorstr_("D"), xorstr_("E"), xorstr_("F"), xorstr_("G"), xorstr_("H"),
+        xorstr_("I"), xorstr_("J"), xorstr_("K"), xorstr_("L"), xorstr_("M"), xorstr_("N"), xorstr_("O"), xorstr_("P"), xorstr_("Q"), xorstr_("R"), xorstr_("S"), xorstr_("T"), xorstr_("U"), xorstr_("V"), xorstr_("W"), xorstr_("X"), xorstr_("Y"), xorstr_("Z"),
+        xorstr_("F1"), xorstr_("F2"), xorstr_("F3"), xorstr_("F4"), xorstr_("F5"), xorstr_("F6"), xorstr_("F7"), xorstr_("F8"), xorstr_("F9"), xorstr_("F10"), xorstr_("F11"), xorstr_("F12"),
+        xorstr_("F13"), xorstr_("F14"), xorstr_("F15"), xorstr_("F16"), xorstr_("F17"), xorstr_("F18"), xorstr_("F19"), xorstr_("F20"), xorstr_("F21"), xorstr_("F22"), xorstr_("F23"), xorstr_("F24"),
+        xorstr_("Apostrophe"), xorstr_("Comma"), xorstr_("Minus"), xorstr_("Period"), xorstr_("Slash"), xorstr_("Semicolon"), xorstr_("Equal"), xorstr_("LeftBracket"),
+        xorstr_("Backslash"), xorstr_("RightBracket"), xorstr_("GraveAccent"), xorstr_("CapsLock"), xorstr_("ScrollLock"), xorstr_("NumLock"), xorstr_("PrintScreen"),
+        xorstr_("Pause"), xorstr_("Keypad0"), xorstr_("Keypad1"), xorstr_("Keypad2"), xorstr_("Keypad3"), xorstr_("Keypad4"), xorstr_("Keypad5"), xorstr_("Keypad6"),
+        xorstr_("Keypad7"), xorstr_("Keypad8"), xorstr_("Keypad9"), xorstr_("KeypadDecimal"), xorstr_("KeypadDivide"), xorstr_("KeypadMultiply"),
+        xorstr_("KeypadSubtract"), xorstr_("KeypadAdd"), xorstr_("KeypadEnter"), xorstr_("KeypadEqual"),
+        xorstr_("AppBack"), xorstr_("AppForward"),
+        xorstr_("GamepadStart"), xorstr_("GamepadBack"),
+        xorstr_("GamepadFaceLeft"), xorstr_("GamepadFaceRight"), xorstr_("GamepadFaceUp"), xorstr_("GamepadFaceDown"),
+        xorstr_("GamepadDpadLeft"), xorstr_("GamepadDpadRight"), xorstr_("GamepadDpadUp"), xorstr_("GamepadDpadDown"),
+        xorstr_("GamepadL1"), xorstr_("GamepadR1"), xorstr_("GamepadL2"), xorstr_("GamepadR2"), xorstr_("GamepadL3"), xorstr_("GamepadR3"),
+        xorstr_("GamepadLStickLeft"), xorstr_("GamepadLStickRight"), xorstr_("GamepadLStickUp"), xorstr_("GamepadLStickDown"),
+        xorstr_("GamepadRStickLeft"), xorstr_("GamepadRStickRight"), xorstr_("GamepadRStickUp"), xorstr_("GamepadRStickDown"),
+        xorstr_("MouseLeft"), xorstr_("MouseRight"), xorstr_("MouseMiddle"), xorstr_("MouseX1"), xorstr_("MouseX2"), xorstr_("MouseWheelX"), xorstr_("MouseWheelY"),
+        xorstr_("ModCtrl"), xorstr_("ModShift"), xorstr_("ModAlt"), xorstr_("ModSuper"), // ReservedForModXXX are showing the ModXXX names.
+    };
+
+    IM_STATIC_ASSERT(ImGuiKey_NamedKey_COUNT == IM_ARRAYSIZE(GKeyNames));
 
     return GKeyNames[key - ImGuiKey_NamedKey_BEGIN];
 }
@@ -8275,11 +8390,11 @@ const char* ImGui::GetKeyChordName(ImGuiKeyChord key_chord)
 {
     ImGuiContext& g = *GImGui;
     key_chord = FixupKeyChord(&g, key_chord);
-    ImFormatString(g.TempKeychordName, IM_ARRAYSIZE(g.TempKeychordName), "%s%s%s%s%s",
-        (key_chord & ImGuiMod_Ctrl) ? "Ctrl+" : "",
-        (key_chord & ImGuiMod_Shift) ? "Shift+" : "",
-        (key_chord & ImGuiMod_Alt) ? "Alt+" : "",
-        (key_chord & ImGuiMod_Super) ? (g.IO.ConfigMacOSXBehaviors ? "Cmd+" : "Super+") : "",
+    ImFormatString(g.TempKeychordName, IM_ARRAYSIZE(g.TempKeychordName), xorstr_("%s%s%s%s%s"),
+        (key_chord & ImGuiMod_Ctrl) ? xorstr_("Ctrl+") : "",
+        (key_chord & ImGuiMod_Shift) ? xorstr_("Shift+") : "",
+        (key_chord & ImGuiMod_Alt) ? xorstr_("Alt+") : "",
+        (key_chord & ImGuiMod_Super) ? (g.IO.ConfigMacOSXBehaviors ? xorstr_("Cmd+") : xorstr_("Super+")) : "",
         GetKeyName((ImGuiKey)(key_chord & ~ImGuiMod_Mask_)));
     return g.TempKeychordName;
 }
@@ -9560,18 +9675,18 @@ bool ImGui::Shortcut(ImGuiKeyChord key_chord, ImGuiID owner_id, ImGuiInputFlags 
 //   The configuration settings mentioned in imconfig.h must be set for all compilation units involved with Dear ImGui,
 //   which is way it is required you put them in your imconfig file (and not just before including imgui.h).
 //   Otherwise it is possible that different compilation units would see different structure layout
-bool ImGui::DebugCheckVersionAndDataLayout(const char* version, size_t sz_io, size_t sz_style, size_t sz_vec2, size_t sz_vec4, size_t sz_vert, size_t sz_idx)
-{
-    bool error = false;
-    if (strcmp(version, IMGUI_VERSION) != 0) { error = true; IM_ASSERT(strcmp(version, IMGUI_VERSION) == 0 && "Mismatched version string!"); }
-    if (sz_io != sizeof(ImGuiIO)) { error = true; IM_ASSERT(sz_io == sizeof(ImGuiIO) && "Mismatched struct layout!"); }
-    if (sz_style != sizeof(ImGuiStyle)) { error = true; IM_ASSERT(sz_style == sizeof(ImGuiStyle) && "Mismatched struct layout!"); }
-    if (sz_vec2 != sizeof(ImVec2)) { error = true; IM_ASSERT(sz_vec2 == sizeof(ImVec2) && "Mismatched struct layout!"); }
-    if (sz_vec4 != sizeof(ImVec4)) { error = true; IM_ASSERT(sz_vec4 == sizeof(ImVec4) && "Mismatched struct layout!"); }
-    if (sz_vert != sizeof(ImDrawVert)) { error = true; IM_ASSERT(sz_vert == sizeof(ImDrawVert) && "Mismatched struct layout!"); }
-    if (sz_idx != sizeof(ImDrawIdx)) { error = true; IM_ASSERT(sz_idx == sizeof(ImDrawIdx) && "Mismatched struct layout!"); }
-    return !error;
-}
+//bool ImGui::DebugCheckVersionAndDataLayout(const char* version, size_t sz_io, size_t sz_style, size_t sz_vec2, size_t sz_vec4, size_t sz_vert, size_t sz_idx)
+//{
+//    bool error = false;
+//    if (IMGUI_STRCMP(version, IMGUI_VERSION.crypt_get()) != 0) { error = true; IM_ASSERT(IMGUI_STRCMP(version, IMGUI_VERSION.crypt_get()) == 0 && "Mismatched version string!"); }
+//    if (sz_io != sizeof(ImGuiIO)) { error = true; IM_ASSERT(sz_io == sizeof(ImGuiIO) && "Mismatched struct layout!"); }
+//    if (sz_style != sizeof(ImGuiStyle)) { error = true; IM_ASSERT(sz_style == sizeof(ImGuiStyle) && "Mismatched struct layout!"); }
+//    if (sz_vec2 != sizeof(ImVec2)) { error = true; IM_ASSERT(sz_vec2 == sizeof(ImVec2) && "Mismatched struct layout!"); }
+//    if (sz_vec4 != sizeof(ImVec4)) { error = true; IM_ASSERT(sz_vec4 == sizeof(ImVec4) && "Mismatched struct layout!"); }
+//    if (sz_vert != sizeof(ImDrawVert)) { error = true; IM_ASSERT(sz_vert == sizeof(ImDrawVert) && "Mismatched struct layout!"); }
+//    if (sz_idx != sizeof(ImDrawIdx)) { error = true; IM_ASSERT(sz_idx == sizeof(ImDrawIdx) && "Mismatched struct layout!"); }
+//    return !error;
+//}
 
 // Until 1.89 (IMGUI_VERSION_NUM < 18814) it was legal to use SetCursorPos() to extend the boundary of a parent (e.g. window or table cell)
 // This is causing issues and ambiguity and we need to retire that.
@@ -9709,12 +9824,12 @@ void    ImGui::ErrorCheckEndFrameRecover(ImGuiErrorLogCallback log_callback, voi
         }
         if (window->Flags & ImGuiWindowFlags_ChildWindow)
         {
-            if (log_callback) log_callback(user_data, "Recovered from missing EndChild() for '%s'", window->Name);
+            if (log_callback) log_callback(user_data, xorstr_("Recovered from missing EndChild() for '%s'"), window->Name);
             EndChild();
         }
         else
         {
-            if (log_callback) log_callback(user_data, "Recovered from missing End() for '%s'", window->Name);
+            if (log_callback) log_callback(user_data, xorstr_("Recovered from missing End() for '%s'"), window->Name);
             End();
         }
     }
@@ -9726,7 +9841,7 @@ void    ImGui::ErrorCheckEndWindowRecover(ImGuiErrorLogCallback log_callback, vo
     ImGuiContext& g = *GImGui;
     while (g.CurrentTable && (g.CurrentTable->OuterWindow == g.CurrentWindow || g.CurrentTable->InnerWindow == g.CurrentWindow))
     {
-        if (log_callback) log_callback(user_data, "Recovered from missing EndTable() in '%s'", g.CurrentTable->OuterWindow->Name);
+        if (log_callback) log_callback(user_data, xorstr_("Recovered from missing EndTable() in '%s'"), g.CurrentTable->OuterWindow->Name);
         EndTable();
     }
 
@@ -9735,52 +9850,52 @@ void    ImGui::ErrorCheckEndWindowRecover(ImGuiErrorLogCallback log_callback, vo
     IM_ASSERT(window != NULL);
     while (g.CurrentTabBar != NULL) //-V1044
     {
-        if (log_callback) log_callback(user_data, "Recovered from missing EndTabBar() in '%s'", window->Name);
+        if (log_callback) log_callback(user_data, xorstr_("Recovered from missing EndTabBar() in '%s'"), window->Name);
         EndTabBar();
     }
     while (window->DC.TreeDepth > 0)
     {
-        if (log_callback) log_callback(user_data, "Recovered from missing TreePop() in '%s'", window->Name);
+        if (log_callback) log_callback(user_data, xorstr_("Recovered from missing TreePop() in '%s'"), window->Name);
         TreePop();
     }
     while (g.GroupStack.Size > stack_sizes->SizeOfGroupStack) //-V1044
     {
-        if (log_callback) log_callback(user_data, "Recovered from missing EndGroup() in '%s'", window->Name);
+        if (log_callback) log_callback(user_data, xorstr_("Recovered from missing EndGroup() in '%s'"), window->Name);
         EndGroup();
     }
     while (window->IDStack.Size > 1)
     {
-        if (log_callback) log_callback(user_data, "Recovered from missing PopID() in '%s'", window->Name);
+        if (log_callback) log_callback(user_data, xorstr_("Recovered from missing PopID() in '%s'"), window->Name);
         PopID();
     }
     while (g.DisabledStackSize > stack_sizes->SizeOfDisabledStack) //-V1044
     {
-        if (log_callback) log_callback(user_data, "Recovered from missing EndDisabled() in '%s'", window->Name);
+        if (log_callback) log_callback(user_data, xorstr_("Recovered from missing EndDisabled() in '%s'"), window->Name);
         EndDisabled();
     }
     while (g.ColorStack.Size > stack_sizes->SizeOfColorStack)
     {
-        if (log_callback) log_callback(user_data, "Recovered from missing PopStyleColor() in '%s' for ImGuiCol_%s", window->Name, GetStyleColorName(g.ColorStack.back().Col));
+        if (log_callback) log_callback(user_data, xorstr_("Recovered from missing PopStyleColor() in '%s' for ImGuiCol_%s"), window->Name, GetStyleColorName(g.ColorStack.back().Col));
         PopStyleColor();
     }
     while (g.ItemFlagsStack.Size > stack_sizes->SizeOfItemFlagsStack) //-V1044
     {
-        if (log_callback) log_callback(user_data, "Recovered from missing PopItemFlag() in '%s'", window->Name);
+        if (log_callback) log_callback(user_data, xorstr_("Recovered from missing PopItemFlag() in '%s'"), window->Name);
         PopItemFlag();
     }
     while (g.StyleVarStack.Size > stack_sizes->SizeOfStyleVarStack) //-V1044
     {
-        if (log_callback) log_callback(user_data, "Recovered from missing PopStyleVar() in '%s'", window->Name);
+        if (log_callback) log_callback(user_data, xorstr_("Recovered from missing PopStyleVar() in '%s'"), window->Name);
         PopStyleVar();
     }
     while (g.FontStack.Size > stack_sizes->SizeOfFontStack) //-V1044
     {
-        if (log_callback) log_callback(user_data, "Recovered from missing PopFont() in '%s'", window->Name);
+        if (log_callback) log_callback(user_data, xorstr_("Recovered from missing PopFont() in '%s'"), window->Name);
         PopFont();
     }
     while (g.FocusScopeStack.Size > stack_sizes->SizeOfFocusScopeStack + 1) //-V1044
     {
-        if (log_callback) log_callback(user_data, "Recovered from missing PopFocusScope() in '%s'", window->Name);
+        if (log_callback) log_callback(user_data, xorstr_("Recovered from missing PopFocusScope() in '%s'"), window->Name);
         PopFocusScope();
     }
 }
@@ -10660,14 +10775,14 @@ bool ImGui::BeginTooltipEx(ImGuiTooltipFlags tooltip_flags, ImGuiWindowFlags ext
     }
 
     char window_name[16];
-    ImFormatString(window_name, IM_ARRAYSIZE(window_name), "##Tooltip_%02d", g.TooltipOverrideCount);
+    ImFormatString(window_name, IM_ARRAYSIZE(window_name), xorstr_("##Tooltip_%02d"), g.TooltipOverrideCount);
     if (tooltip_flags & ImGuiTooltipFlags_OverridePrevious)
         if (ImGuiWindow* window = FindWindowByName(window_name))
             if (window->Active)
             {
                 // Hide previous tooltip from being displayed. We can't easily "reset" the content of a window so we create a new one.
                 SetWindowHiddenAndSkipItemsForCurrentFrame(window);
-                ImFormatString(window_name, IM_ARRAYSIZE(window_name), "##Tooltip_%02d", ++g.TooltipOverrideCount);
+                ImFormatString(window_name, IM_ARRAYSIZE(window_name), xorstr_("##Tooltip_%02d"), ++g.TooltipOverrideCount);
             }
     ImGuiWindowFlags flags = ImGuiWindowFlags_Tooltip | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
     Begin(window_name, NULL, flags | extra_window_flags);
@@ -10984,9 +11099,9 @@ bool ImGui::BeginPopupEx(ImGuiID id, ImGuiWindowFlags flags)
 
     char name[20];
     if (flags & ImGuiWindowFlags_ChildMenu)
-        ImFormatString(name, IM_ARRAYSIZE(name), "##Menu_%02d", g.BeginMenuDepth); // Recycle windows based on depth
+        ImFormatString(name, IM_ARRAYSIZE(name), xorstr_("##Menu_%02d"), g.BeginMenuDepth); // Recycle windows based on depth
     else
-        ImFormatString(name, IM_ARRAYSIZE(name), "##Popup_%08x", id); // Not recycling, so we can close/open during the same frame
+        ImFormatString(name, IM_ARRAYSIZE(name), xorstr_("##Popup_%08x"), id); // Not recycling, so we can close/open during the same frame
 
     flags |= ImGuiWindowFlags_Popup;
     bool is_open = Begin(name, NULL, flags);
@@ -11118,7 +11233,7 @@ bool ImGui::BeginPopupContextWindow(const char* str_id, ImGuiPopupFlags popup_fl
     ImGuiContext& g = *GImGui;
     ImGuiWindow* window = g.CurrentWindow;
     if (!str_id)
-        str_id = "window_context";
+        str_id = xorstr_("window_context");
     ImGuiID id = window->GetID(str_id);
     int mouse_button = (popup_flags & ImGuiPopupFlags_MouseButtonMask_);
     if (IsMouseReleased(mouse_button) && IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup))
@@ -11132,7 +11247,7 @@ bool ImGui::BeginPopupContextVoid(const char* str_id, ImGuiPopupFlags popup_flag
     ImGuiContext& g = *GImGui;
     ImGuiWindow* window = g.CurrentWindow;
     if (!str_id)
-        str_id = "void_context";
+        str_id = xorstr_("void_context");
     ImGuiID id = window->GetID(str_id);
     int mouse_button = (popup_flags & ImGuiPopupFlags_MouseButtonMask_);
     if (IsMouseReleased(mouse_button) && !IsWindowHovered(ImGuiHoveredFlags_AnyWindow))
@@ -11397,12 +11512,12 @@ static bool ImGui::NavScoreItem(ImGuiNavItemData* result)
     float dby = NavScoreItemDistInterval(ImLerp(cand.Min.y, cand.Max.y, 0.2f), ImLerp(cand.Min.y, cand.Max.y, 0.8f), ImLerp(curr.Min.y, curr.Max.y, 0.2f), ImLerp(curr.Min.y, curr.Max.y, 0.8f)); // Scale down on Y to keep using box-distance for vertically touching items
     if (dby != 0.0f && dbx != 0.0f)
         dbx = (dbx / 1000.0f) + ((dbx > 0.0f) ? +1.0f : -1.0f);
-    float dist_box = ImFabs(dbx) + ImFabs(dby);
+    float dist_box = ImFabsf(dbx) + ImFabsf(dby);
 
     // Compute distance between centers (this is off by a factor of 2, but we only compare center distances with each other so it doesn't matter)
     float dcx = (cand.Min.x + cand.Max.x) - (curr.Min.x + curr.Max.x);
     float dcy = (cand.Min.y + cand.Max.y) - (curr.Min.y + curr.Max.y);
-    float dist_center = ImFabs(dcx) + ImFabs(dcy); // L1 metric (need this for our connectedness guarantee)
+    float dist_center = ImFabsf(dcx) + ImFabsf(dcy); // L1 metric (need this for our connectedness guarantee)
 
     // Determine which quadrant of 'curr' our candidate item 'cand' lies in based on distance
     ImGuiDir quadrant;
@@ -12637,7 +12752,7 @@ static void ImGui::NavUpdateWindowing()
 
     // Start CTRL+Tab or Square+L/R window selection
     // (g.ConfigNavWindowingKeyNext/g.ConfigNavWindowingKeyPrev defaults are ImGuiMod_Ctrl|ImGuiKey_Tab and ImGuiMod_Ctrl|ImGuiMod_Shift|ImGuiKey_Tab)
-    const ImGuiID owner_id = ImHashStr("###NavUpdateWindowing");
+    const ImGuiID owner_id = ImHashStr(xorstr_("###NavUpdateWindowing"));
     const bool nav_gamepad_active = (io.ConfigFlags & ImGuiConfigFlags_NavEnableGamepad) != 0 && (io.BackendFlags & ImGuiBackendFlags_HasGamepad) != 0;
     const bool nav_keyboard_active = (io.ConfigFlags & ImGuiConfigFlags_NavEnableKeyboard) != 0;
     const bool keyboard_next_window = allow_windowing && g.ConfigNavWindowingKeyNext && Shortcut(g.ConfigNavWindowingKeyNext, owner_id, ImGuiInputFlags_Repeat | ImGuiInputFlags_RouteAlways);
@@ -12814,7 +12929,7 @@ static const char* GetFallbackWindowNameForWindowingList(ImGuiWindow* window)
 {
     if (window->Flags & ImGuiWindowFlags_Popup)
         return ImGui::LocalizeGetMsg(ImGuiLocKey_WindowingPopup);
-    if ((window->Flags & ImGuiWindowFlags_MenuBar) && strcmp(window->Name, "##MainMenuBar") == 0)
+    if ((window->Flags & ImGuiWindowFlags_MenuBar) && IMGUI_STRCMP(window->Name, xorstr_("##MainMenuBar")) == 0)
         return ImGui::LocalizeGetMsg(ImGuiLocKey_WindowingMainMenuBar);
     return ImGui::LocalizeGetMsg(ImGuiLocKey_WindowingUntitled);
 }
@@ -12829,12 +12944,12 @@ void ImGui::NavUpdateWindowingOverlay()
         return;
 
     if (g.NavWindowingListWindow == NULL)
-        g.NavWindowingListWindow = FindWindowByName("###NavWindowingList");
+        g.NavWindowingListWindow = FindWindowByName(xorstr_("###NavWindowingList"));
     const ImGuiViewport* viewport = GetMainViewport();
     SetNextWindowSizeConstraints(ImVec2(viewport->Size.x * 0.20f, viewport->Size.y * 0.20f), ImVec2(FLT_MAX, FLT_MAX));
     SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
     PushStyleVar(ImGuiStyleVar_WindowPadding, g.Style.WindowPadding * 2.0f);
-    Begin("###NavWindowingList", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings);
+    Begin(xorstr_("###NavWindowingList"), NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings);
     for (int n = g.WindowsFocusOrder.Size - 1; n >= 0; n--)
     {
         ImGuiWindow* window = g.WindowsFocusOrder[n];
@@ -12872,13 +12987,13 @@ void ImGui::ClearDragDrop()
     g.DragDropAcceptFrameCount = -1;
 
     g.DragDropPayloadBufHeap.clear();
-    memset(&g.DragDropPayloadBufLocal, 0, sizeof(g.DragDropPayloadBufLocal));
+    IMGUI_MEMSET(&g.DragDropPayloadBufLocal, 0, sizeof(g.DragDropPayloadBufLocal));
 }
 
 bool ImGui::BeginTooltipHidden()
 {
     ImGuiContext& g = *GImGui;
-    bool ret = Begin("##Tooltip_Hidden", NULL, ImGuiWindowFlags_Tooltip | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize);
+    bool ret = Begin(xorstr_("##Tooltip_Hidden"), NULL, ImGuiWindowFlags_Tooltip | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize);
     SetWindowHiddenAndSkipItemsForCurrentFrame(g.CurrentWindow);
     return ret;
 }
@@ -12959,7 +13074,7 @@ bool ImGui::BeginDragDropSource(ImGuiDragDropFlags flags)
     else
     {
         window = NULL;
-        source_id = ImHashStr("#SourceExtern");
+        source_id = ImHashStr(xorstr_("#SourceExtern"));
         source_drag_active = true;
     }
 
@@ -13026,7 +13141,7 @@ bool ImGui::SetDragDropPayload(const char* type, const void* data, size_t data_s
         cond = ImGuiCond_Always;
 
     IM_ASSERT(type != NULL);
-    IM_ASSERT(strlen(type) < IM_ARRAYSIZE(payload.DataType) && "Payload type can be at most 32 characters long");
+    IM_ASSERT(IMGUI_STRLEN(type) < IM_ARRAYSIZE(payload.DataType) && "Payload type can be at most 32 characters long");
     IM_ASSERT((data != NULL && data_size > 0) || (data == NULL && data_size == 0));
     IM_ASSERT(cond == ImGuiCond_Always || cond == ImGuiCond_Once);
     IM_ASSERT(payload.SourceId != 0);                               // Not called between BeginDragDropSource() and EndDragDropSource()
@@ -13041,14 +13156,14 @@ bool ImGui::SetDragDropPayload(const char* type, const void* data, size_t data_s
             // Store in heap
             g.DragDropPayloadBufHeap.resize((int)data_size);
             payload.Data = g.DragDropPayloadBufHeap.Data;
-            memcpy(payload.Data, data, data_size);
+            IMGUI_MEMCPY(payload.Data, data, data_size);
         }
         else if (data_size > 0)
         {
             // Store locally
-            memset(&g.DragDropPayloadBufLocal, 0, sizeof(g.DragDropPayloadBufLocal));
+            IMGUI_MEMSET(&g.DragDropPayloadBufLocal, 0, sizeof(g.DragDropPayloadBufLocal));
             payload.Data = g.DragDropPayloadBufLocal;
-            memcpy(payload.Data, data, data_size);
+            IMGUI_MEMCPY(payload.Data, data, data_size);
         }
         else
         {
@@ -13266,7 +13381,7 @@ void ImGui::LogRenderedText(const ImVec2* ref_pos, const char* text, const char*
     }
 
     if (prefix)
-        LogRenderedText(ref_pos, prefix, prefix + strlen(prefix)); // Calculate end ourself to ensure "##" are included here.
+        LogRenderedText(ref_pos, prefix, prefix + IMGUI_STRLEN(prefix)); // Calculate end ourself to ensure "##" are included here.
 
     // Re-adjust padding if we have popped out of our starting depth
     if (g.LogDepthRef > window->DC.TreeDepth)
@@ -13285,7 +13400,7 @@ void ImGui::LogRenderedText(const ImVec2* ref_pos, const char* text, const char*
         {
             const int line_length = (int)(line_end - line_start);
             const int indentation = g.LogLineFirstItem ? tree_depth * 4 : 1;
-            LogText("%*s%.*s", indentation, "", line_length, line_start);
+            LogText(xorstr_("%*s%.*s"), indentation, "", line_length, line_start);
             g.LogLineFirstItem = false;
             if (*line_end == '\n')
             {
@@ -13299,7 +13414,7 @@ void ImGui::LogRenderedText(const ImVec2* ref_pos, const char* text, const char*
     }
 
     if (suffix)
-        LogRenderedText(ref_pos, suffix, suffix + strlen(suffix));
+        LogRenderedText(ref_pos, suffix, suffix + IMGUI_STRLEN(suffix));
 }
 
 // Start logging/capturing text output
@@ -13421,17 +13536,17 @@ void ImGui::LogButtons()
 {
     ImGuiContext& g = *GImGui;
 
-    PushID("LogButtons");
+    PushID(xorstr_("LogButtons"));
 #ifndef IMGUI_DISABLE_TTY_FUNCTIONS
     const bool log_to_tty = Button("Log To TTY"); SameLine();
 #else
     const bool log_to_tty = false;
 #endif
-    const bool log_to_file = Button("Log To File"); SameLine();
-    const bool log_to_clipboard = Button("Log To Clipboard"); SameLine();
+    const bool log_to_file = Button(xorstr_("Log To File")); SameLine();
+    const bool log_to_clipboard = Button(xorstr_("Log To Clipboard")); SameLine();
     PushTabStop(false);
     SetNextItemWidth(80.0f);
-    SliderInt("Default Depth", &g.LogDepthToExpandDefault, 0, 9, NULL);
+    SliderInt(xorstr_("Default Depth"), &g.LogDepthToExpandDefault, 0, 9, NULL);
     PopTabStop();
     PopID();
 
@@ -13553,7 +13668,7 @@ void ImGui::LoadIniSettingsFromDisk(const char* ini_filename)
 }
 
 // Zero-tolerance, no error reporting, cheap .ini parsing
-// Set ini_size==0 to let us use strlen(ini_data). Do not call this function with a 0 if your buffer is actually empty!
+// Set ini_size==0 to let us use IMGUI_STRLEN(ini_data). Do not call this function with a 0 if your buffer is actually empty!
 void ImGui::LoadIniSettingsFromMemory(const char* ini_data, size_t ini_size)
 {
     ImGuiContext& g = *GImGui;
@@ -13564,11 +13679,11 @@ void ImGui::LoadIniSettingsFromMemory(const char* ini_data, size_t ini_size)
     // For user convenience, we allow passing a non zero-terminated string (hence the ini_size parameter).
     // For our convenience and to make the code simpler, we'll also write zero-terminators within the buffer. So let's create a writable copy..
     if (ini_size == 0)
-        ini_size = strlen(ini_data);
+        ini_size = IMGUI_STRLEN(ini_data);
     g.SettingsIniData.Buf.resize((int)ini_size + 1);
     char* const buf = g.SettingsIniData.Buf.Data;
     char* const buf_end = buf + ini_size;
-    memcpy(buf, ini_data, ini_size);
+    IMGUI_MEMCPY(buf, ini_data, ini_size);
     buf_end[0] = 0;
 
     // Call pre-read handlers
@@ -13616,7 +13731,7 @@ void ImGui::LoadIniSettingsFromMemory(const char* ini_data, size_t ini_size)
     g.SettingsLoaded = true;
 
     // [DEBUG] Restore untouched copy so it can be browsed in Metrics (not strictly necessary)
-    memcpy(buf, ini_data, ini_size);
+    IMGUI_MEMCPY(buf, ini_data, ini_size);
 
     // Call post-read handlers
     for (ImGuiSettingsHandler& handler : g.SettingsHandlers)
@@ -13662,17 +13777,17 @@ ImGuiWindowSettings* ImGui::CreateNewWindowSettings(const char* name)
     {
         // Skip to the "###" marker if any. We don't skip past to match the behavior of GetID()
         // Preserve the full string when ConfigDebugVerboseIniSettings is set to make .ini inspection easier.
-        if (const char* p = strstr(name, "###"))
+        if (const char* p = IMGUI_STRSTR(name, "###"))
             name = p;
     }
-    const size_t name_len = strlen(name);
+    const size_t name_len = IMGUI_STRLEN(name);
 
     // Allocate chunk
     const size_t chunk_size = sizeof(ImGuiWindowSettings) + name_len + 1;
     ImGuiWindowSettings* settings = g.SettingsWindows.alloc_chunk(chunk_size);
     IM_PLACEMENT_NEW(settings) ImGuiWindowSettings();
     settings->ID = ImHashStr(name, name_len);
-    memcpy(settings->GetName(), name, name_len + 1);   // Store with zero terminator
+    IMGUI_MEMCPY(settings->GetName(), name, name_len + 1);   // Store with zero terminator
 
     return settings;
 }
@@ -13737,10 +13852,10 @@ static void WindowSettingsHandler_ReadLine(ImGuiContext*, ImGuiSettingsHandler*,
     ImGuiWindowSettings* settings = (ImGuiWindowSettings*)entry;
     int x, y;
     int i;
-    if (sscanf(line, "Pos=%i,%i", &x, &y) == 2) { settings->Pos = ImVec2ih((short)x, (short)y); }
-    else if (sscanf(line, "Size=%i,%i", &x, &y) == 2) { settings->Size = ImVec2ih((short)x, (short)y); }
-    else if (sscanf(line, "Collapsed=%d", &i) == 1) { settings->Collapsed = (i != 0); }
-    else if (sscanf(line, "IsChild=%d", &i) == 1) { settings->IsChild = (i != 0); }
+    if (IMGUI_SCANF(line, xorstr_("Pos=%i,%i"), &x, &y) == 2) { settings->Pos = ImVec2ih((short)x, (short)y); }
+    else if (IMGUI_SCANF(line, xorstr_("Size=%i,%i"), &x, &y) == 2) { settings->Size = ImVec2ih((short)x, (short)y); }
+    else if (IMGUI_SCANF(line, xorstr_("Collapsed=%d"), &i) == 1) { settings->Collapsed = (i != 0); }
+    else if (IMGUI_SCANF(line, xorstr_("IsChild=%d"), &i) == 1) { settings->IsChild = (i != 0); }
 }
 
 // Apply to existing windows (if any)
@@ -13787,20 +13902,20 @@ static void WindowSettingsHandler_WriteAll(ImGuiContext* ctx, ImGuiSettingsHandl
         if (settings->WantDelete)
             continue;
         const char* settings_name = settings->GetName();
-        buf->appendf("[%s][%s]\n", handler->TypeName, settings_name);
+        buf->appendf(xorstr_("[%s][%s]\n"), handler->TypeName, settings_name);
         if (settings->IsChild)
         {
-            buf->appendf("IsChild=1\n");
-            buf->appendf("Size=%d,%d\n", settings->Size.x, settings->Size.y);
+            buf->appendf(xorstr_("IsChild=1\n"));
+            buf->appendf(xorstr_("Size=%d,%d\n"), settings->Size.x, settings->Size.y);
         }
         else
         {
-            buf->appendf("Pos=%d,%d\n", settings->Pos.x, settings->Pos.y);
-            buf->appendf("Size=%d,%d\n", settings->Size.x, settings->Size.y);
+            buf->appendf(xorstr_("Pos=%d,%d\n"), settings->Pos.x, settings->Pos.y);
+            buf->appendf(xorstr_("Size=%d,%d\n"), settings->Size.x, settings->Size.y);
             if (settings->Collapsed)
-                buf->appendf("Collapsed=1\n");
+                buf->appendf(xorstr_("Collapsed=1\n"));
         }
-        buf->append("\n");
+        buf->append(xorstr_("\n"));
     }
 }
 
@@ -13873,54 +13988,49 @@ static void ImGui::UpdateViewportsNewFrame()
 
 #if defined(_WIN32) && !defined(IMGUI_DISABLE_WIN32_FUNCTIONS) && !defined(IMGUI_DISABLE_WIN32_DEFAULT_CLIPBOARD_FUNCTIONS)
 
-#ifdef _MSC_VER
-#pragma comment(lib, "user32")
-#pragma comment(lib, "kernel32")
-#endif
-
 // Win32 clipboard implementation
 // We use g.ClipboardHandlerData for temporary storage to ensure it is freed on Shutdown()
 static const char* GetClipboardTextFn_DefaultImpl(void* user_data_ctx)
 {
     ImGuiContext& g = *(ImGuiContext*)user_data_ctx;
     g.ClipboardHandlerData.clear();
-    if (!::OpenClipboard(NULL))
+    if (!LI_FN(OpenClipboard).in_safe_cached(IMGUI_LAZY_USER32.safe_cached())(NULL))
         return NULL;
-    HANDLE wbuf_handle = ::GetClipboardData(CF_UNICODETEXT);
+    HANDLE wbuf_handle = LI_FN(GetClipboardData).in_safe_cached(IMGUI_LAZY_USER32.safe_cached())(CF_UNICODETEXT);
     if (wbuf_handle == NULL)
     {
-        ::CloseClipboard();
+        LI_FN(CloseClipboard).in_safe_cached(IMGUI_LAZY_USER32.safe_cached())();
         return NULL;
     }
-    if (const WCHAR* wbuf_global = (const WCHAR*)::GlobalLock(wbuf_handle))
+    if (const WCHAR* wbuf_global = (const WCHAR*)LI_FN(GlobalLock).in_safe_cached(IMGUI_LAZY_KERNEL32.safe_cached())(wbuf_handle))
     {
-        int buf_len = ::WideCharToMultiByte(CP_UTF8, 0, wbuf_global, -1, NULL, 0, NULL, NULL);
+        int buf_len = LI_FN(WideCharToMultiByte).in_safe_cached(IMGUI_LAZY_KERNEL32.safe_cached())(CP_UTF8, 0, wbuf_global, -1, NULL, 0, NULL, NULL);
         g.ClipboardHandlerData.resize(buf_len);
-        ::WideCharToMultiByte(CP_UTF8, 0, wbuf_global, -1, g.ClipboardHandlerData.Data, buf_len, NULL, NULL);
+        LI_FN(WideCharToMultiByte).in_safe_cached(IMGUI_LAZY_KERNEL32.safe_cached())(CP_UTF8, 0, wbuf_global, -1, g.ClipboardHandlerData.Data, buf_len, NULL, NULL);
     }
-    ::GlobalUnlock(wbuf_handle);
-    ::CloseClipboard();
+    LI_FN(GlobalUnlock).in_safe_cached(IMGUI_LAZY_KERNEL32.safe_cached())(wbuf_handle);
+    LI_FN(CloseClipboard).in_safe_cached(IMGUI_LAZY_USER32.safe_cached())();
     return g.ClipboardHandlerData.Data;
 }
 
 static void SetClipboardTextFn_DefaultImpl(void*, const char* text)
 {
-    if (!::OpenClipboard(NULL))
+    if (!LI_FN(OpenClipboard).in_safe_cached(IMGUI_LAZY_USER32.safe_cached())(NULL))
         return;
-    const int wbuf_length = ::MultiByteToWideChar(CP_UTF8, 0, text, -1, NULL, 0);
-    HGLOBAL wbuf_handle = ::GlobalAlloc(GMEM_MOVEABLE, (SIZE_T)wbuf_length * sizeof(WCHAR));
+    const int wbuf_length = LI_FN(MultiByteToWideChar).in_safe_cached(IMGUI_LAZY_KERNEL32.safe_cached())(CP_UTF8, 0, text, -1, NULL, 0);
+    HGLOBAL wbuf_handle = LI_FN(GlobalAlloc).in_safe_cached(IMGUI_LAZY_KERNEL32.safe_cached())(GMEM_MOVEABLE, (SIZE_T)wbuf_length * sizeof(WCHAR));
     if (wbuf_handle == NULL)
     {
-        ::CloseClipboard();
+        LI_FN(CloseClipboard).in_safe_cached(IMGUI_LAZY_USER32.safe_cached())();
         return;
     }
-    WCHAR* wbuf_global = (WCHAR*)::GlobalLock(wbuf_handle);
-    ::MultiByteToWideChar(CP_UTF8, 0, text, -1, wbuf_global, wbuf_length);
-    ::GlobalUnlock(wbuf_handle);
-    ::EmptyClipboard();
-    if (::SetClipboardData(CF_UNICODETEXT, wbuf_handle) == NULL)
-        ::GlobalFree(wbuf_handle);
-    ::CloseClipboard();
+    WCHAR* wbuf_global = (WCHAR*)LI_FN(GlobalLock).in_safe_cached(IMGUI_LAZY_KERNEL32.safe_cached())(wbuf_handle);
+    LI_FN(MultiByteToWideChar).in_safe_cached(IMGUI_LAZY_KERNEL32.safe_cached())(CP_UTF8, 0, text, -1, wbuf_global, wbuf_length);
+    LI_FN(GlobalUnlock).in_safe_cached(IMGUI_LAZY_KERNEL32.safe_cached())(wbuf_handle);
+    LI_FN(EmptyClipboard).in_safe_cached(IMGUI_LAZY_USER32.safe_cached())();
+    if (LI_FN(SetClipboardData).in_safe_cached(IMGUI_LAZY_USER32.safe_cached())(CF_UNICODETEXT, wbuf_handle) == NULL)
+        LI_FN(GlobalFree).in_safe_cached(IMGUI_LAZY_KERNEL32.safe_cached())(wbuf_handle);
+    LI_FN(CloseClipboard).in_safe_cached(IMGUI_LAZY_USER32.safe_cached())();
 }
 
 #elif defined(__APPLE__) && TARGET_OS_OSX && defined(IMGUI_ENABLE_OSX_DEFAULT_CLIPBOARD_FUNCTIONS)
@@ -13935,7 +14045,7 @@ static void SetClipboardTextFn_DefaultImpl(void*, const char* text)
     if (!main_clipboard)
         PasteboardCreate(kPasteboardClipboard, &main_clipboard);
     PasteboardClear(main_clipboard);
-    CFDataRef cf_data = CFDataCreate(kCFAllocatorDefault, (const UInt8*)text, strlen(text));
+    CFDataRef cf_data = CFDataCreate(kCFAllocatorDefault, (const UInt8*)text, IMGUI_STRLEN(text));
     if (cf_data)
     {
         PasteboardPutItemFlavor(main_clipboard, (PasteboardItemID)1, CFSTR("public.utf8-plain-text"), cf_data, 0);
@@ -13989,9 +14099,9 @@ static void SetClipboardTextFn_DefaultImpl(void* user_data_ctx, const char* text
 {
     ImGuiContext& g = *(ImGuiContext*)user_data_ctx;
     g.ClipboardHandlerData.clear();
-    const char* text_end = text + strlen(text);
+    const char* text_end = text + IMGUI_STRLEN(text);
     g.ClipboardHandlerData.resize((int)(text_end - text) + 1);
-    memcpy(&g.ClipboardHandlerData[0], text, (size_t)(text_end - text));
+    IMGUI_MEMCPY(&g.ClipboardHandlerData[0], text, (size_t)(text_end - text));
     g.ClipboardHandlerData[(int)(text_end - text)] = 0;
 }
 
@@ -14902,7 +15012,7 @@ void ImGui::DebugNodeColumns(ImGuiOldColumns* columns)
 static void FormatTextureIDForDebugDisplay(char* buf, int buf_size, ImTextureID tex_id)
 {
     union { void* ptr; int integer; } tex_id_opaque;
-    memcpy(&tex_id_opaque, &tex_id, ImMin(sizeof(void*), sizeof(tex_id)));
+    IMGUI_MEMCPY(&tex_id_opaque, &tex_id, ImMin(sizeof(void*), sizeof(tex_id)));
     if (sizeof(tex_id) >= sizeof(void*))
         ImFormatString(buf, buf_size, "0x%p", tex_id_opaque.ptr);
     else
@@ -15413,7 +15523,7 @@ void ImGui::ShowDebugLogWindow(bool* p_open)
                 for (const char* p = line_begin; p <= line_end - 10; p++) // Search for 0x???????? identifiers
                 {
                     ImGuiID id = 0;
-                    if (p[0] != '0' || (p[1] != 'x' && p[1] != 'X') || sscanf(p + 2, "%X", &id) != 1)
+                    if (p[0] != '0' || (p[1] != 'x' && p[1] != 'X') || IMGUI_SCANF(p + 2, "%X", &id) != 1)
                         continue;
                     ImVec2 p0 = CalcTextSize(line_begin, p);
                     ImVec2 p1 = CalcTextSize(p, p + 10);
@@ -15625,7 +15735,7 @@ void ImGui::DebugHookIdInfo(ImGuiID id, ImGuiDataType data_type, const void* dat
         ImFormatString(info->Desc, IM_ARRAYSIZE(info->Desc), "%d", (int)(intptr_t)data_id);
         break;
     case ImGuiDataType_String:
-        ImFormatString(info->Desc, IM_ARRAYSIZE(info->Desc), "%.*s", data_id_end ? (int)((const char*)data_id_end - (const char*)data_id) : (int)strlen((const char*)data_id), (const char*)data_id);
+        ImFormatString(info->Desc, IM_ARRAYSIZE(info->Desc), "%.*s", data_id_end ? (int)((const char*)data_id_end - (const char*)data_id) : (int)IMGUI_STRLEN((const char*)data_id), (const char*)data_id);
         break;
     case ImGuiDataType_Pointer:
         ImFormatString(info->Desc, IM_ARRAYSIZE(info->Desc), "(void*)0x%p", data_id);
